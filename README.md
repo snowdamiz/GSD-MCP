@@ -2,7 +2,7 @@
 
 # GET SHIT DONE
 
-**A light-weight and powerful meta-prompting, context engineering and spec-driven development system for Claude Code, OpenCode, and Gemini CLI.**
+**A light-weight and powerful meta-prompting, context engineering and spec-driven development system for Claude Code, OpenCode, Gemini CLI, and any MCP client.**
 
 **Solves context rot — the quality degradation that happens as Claude fills its context window.**
 
@@ -38,7 +38,7 @@ npx get-shit-done-cc@latest
 
 **Trusted by engineers at Amazon, Google, Shopify, and Webflow.**
 
-[Why I Built This](#why-i-built-this) · [How It Works](#how-it-works) · [Commands](#commands) · [Why It Works](#why-it-works) · [User Guide](docs/USER-GUIDE.md)
+[Why I Built This](#why-i-built-this) · [How It Works](#how-it-works) · [Commands](#commands) · [MCP Server](#mcp-server) · [Why It Works](#why-it-works) · [User Guide](docs/USER-GUIDE.md)
 
 </div>
 
@@ -509,6 +509,113 @@ You're never locked in. The system adapts.
 | `/gsd:health [--repair]` | Validate `.planning/` directory integrity, auto-repair with `--repair` |
 
 <sup>¹ Contributed by reddit user OracleGreyBeard</sup>
+
+---
+
+## MCP Server
+
+GSD includes an MCP server that exposes every workflow as a tool. This lets you use GSD from **any MCP-compatible client** — Cursor, Windsurf, Claude Desktop, Cline, OpenAI Codex, or anything else that speaks MCP.
+
+Every slash command has a 1:1 matching MCP tool. When you call it, you get back the full workflow instructions — the same ones Claude Code follows when you type `/gsd:plan-phase 1`.
+
+### Setup
+
+Add GSD to your MCP client config. The exact file depends on your client:
+
+- **Cursor**: `.cursor/mcp.json`
+- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windsurf**: `~/.codeium/windsurf/mcp_config.json`
+
+```json
+{
+  "mcpServers": {
+    "gsd": {
+      "command": "node",
+      "args": ["/path/to/get-shit-done-cc/src/mcp-server/index.js"],
+      "cwd": "/path/to/your/project"
+    }
+  }
+}
+```
+
+Replace `/path/to/get-shit-done-cc` with wherever the package is installed (e.g., `~/.claude/get-shit-done-cc` or `node_modules/get-shit-done-cc`). The `cwd` should point to your project root.
+
+If installed globally via npm, you can also run:
+
+```bash
+npm start-mcp
+```
+
+### Workflow Tools (30)
+
+These mirror every slash command. Each returns the full workflow markdown for the agent to follow step by step.
+
+| Tool | Equivalent Command | Description |
+|------|-------------------|-------------|
+| `gsd_new_project` | `/gsd:new-project` | Questions → research → requirements → roadmap |
+| `gsd_plan_phase` | `/gsd:plan-phase` | Research + plan + verify for a phase |
+| `gsd_execute_phase` | `/gsd:execute-phase` | Execute plans in parallel waves |
+| `gsd_discuss_phase` | `/gsd:discuss-phase` | Capture implementation decisions |
+| `gsd_verify_work` | `/gsd:verify-work` | Manual user acceptance testing |
+| `gsd_quick` | `/gsd:quick` | Ad-hoc task with GSD guarantees |
+| `gsd_map_codebase` | `/gsd:map-codebase` | Analyze existing codebase with parallel mappers |
+| `gsd_new_milestone` | `/gsd:new-milestone` | Start next version cycle |
+| `gsd_audit_milestone` | `/gsd:audit-milestone` | Verify milestone definition of done |
+| `gsd_complete_milestone` | `/gsd:complete-milestone` | Archive milestone and tag release |
+| `gsd_plan_milestone_gaps` | `/gsd:plan-milestone-gaps` | Create phases to close audit gaps |
+| `gsd_research_phase` | `/gsd:research-phase` | Deep research without planning |
+| `gsd_insert_phase` | `/gsd:insert-phase` | Insert urgent work between phases |
+| `gsd_add_phase` | `/gsd:add-phase` | Append phase to roadmap |
+| `gsd_remove_phase` | `/gsd:remove-phase` | Remove future phase, renumber |
+| `gsd_list_phase_assumptions` | `/gsd:list-phase-assumptions` | See Claude's intended approach |
+| `gsd_debug` | `/gsd:debug` | Systematic debugging with persistent state |
+| `gsd_progress` | `/gsd:progress` | Where am I? What's next? |
+| `gsd_pause_work` | `/gsd:pause-work` | Create handoff when stopping mid-phase |
+| `gsd_resume_work` | `/gsd:resume-work` | Restore from last session |
+| `gsd_health` | `/gsd:health` | Diagnose and repair project health |
+| `gsd_cleanup` | `/gsd:cleanup` | Archive old plans |
+| `gsd_update` | `/gsd:update` | Update GSD to latest version |
+| `gsd_reapply_patches` | `/gsd:reapply-patches` | Reapply local mods after update |
+| `gsd_settings` | `/gsd:settings` | Configure workflow settings |
+| `gsd_set_profile` | `/gsd:set-profile` | Switch model profile |
+| `gsd_add_todo` | `/gsd:add-todo` | Capture idea for later |
+| `gsd_check_todos` | `/gsd:check-todos` | List pending todos |
+| `gsd_help` | `/gsd:help` | Show help and documentation |
+| `gsd_join_discord` | `/gsd:join-discord` | Get Discord invite link |
+
+### Utility Tools (16)
+
+Atomic operations for internal use during workflows. These perform actions directly rather than returning workflow instructions.
+
+| Tool | Description |
+|------|-------------|
+| `gsd_init_project` | Detect project state, return initialization metadata |
+| `gsd_get_state` | Read STATE.md (optionally a specific section) |
+| `gsd_update_state` | Update a field in STATE.md |
+| `gsd_add_phase_atomic` | Add phase to roadmap (atomic, no workflow) |
+| `gsd_complete_phase` | Mark phase complete in roadmap |
+| `gsd_get_phase_plan` | Get plan index and status for a phase |
+| `gsd_log_work` | Log work metrics to STATE.md |
+| `gsd_commit_work` | Git commit using GSD conventions |
+| `gsd_validate_project` | Run health checks on .planning/ |
+| `gsd_todo_complete` | Mark a todo item as complete |
+| `gsd_list_todos` | List pending todos |
+| `gsd_scaffold` | Create templates (context, UAT, verification) |
+| `gsd_websearch` | Web search via Brave API |
+| `gsd_history_digest` | Summarize all phase summaries |
+| `gsd_list_phases` | List all phases in the project |
+| `gsd_milestone_complete` | Archive current milestone (atomic) |
+
+### Resources
+
+Read project files directly via MCP resource URIs:
+
+| URI | Content |
+|-----|---------|
+| `gsd://current/state` | `.planning/STATE.md` |
+| `gsd://current/roadmap` | `.planning/ROADMAP.md` |
+| `gsd://current/requirements` | `.planning/REQUIREMENTS.md` |
+| `gsd://current/config` | `.planning/config.json` |
 
 ---
 
