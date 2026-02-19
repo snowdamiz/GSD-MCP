@@ -49,14 +49,17 @@ Add the server entry:
   "mcpServers": {
     "gsd": {
       "command": "node",
-      "args": ["/absolute/path/to/GSD-MCP/src/mcp-server/index.js"],
-      "cwd": "/absolute/path/to/your/project"
+      "args": ["/absolute/path/to/GSD-MCP/src/mcp-server/index.js"]
     }
   }
 }
 ```
 
-Replace the paths with your actual locations. The `cwd` should point to the project you want to manage with GSD.
+Replace the path with your actual GSD-MCP install location.
+
+**How does GSD know which project I'm in?** Every tool accepts an optional `project_dir` parameter. The agent passes it once on its first tool call (it knows its own working directory), and GSD caches it for the rest of the session. This works with any MCP client — no per-project config needed.
+
+If your client supports MCP roots (e.g., Claude Desktop), the project directory is detected automatically and `project_dir` isn't needed at all.
 
 ### 3. Verify
 
