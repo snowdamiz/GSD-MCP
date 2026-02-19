@@ -7,15 +7,15 @@ Key difference from discuss-phase: This is ANALYSIS of what Claude thinks, not I
 <process>
 
 <step name="validate_phase" priority="first">
-Phase number: $ARGUMENTS (required)
+Phase number: <arguments> (required)
 
 **If argument missing:**
 
 ```
 Error: Phase number required.
 
-Usage: /gsd:list-phase-assumptions [phase-number]
-Example: /gsd:list-phase-assumptions 3
+Usage: gsd_list_phase_assumptions tool with { "phase": "[phase-number]" }
+Example: gsd_list_phase_assumptions tool with { "phase": "3" }
 ```
 
 Exit workflow.
@@ -153,8 +153,8 @@ Present next steps:
 
 ```
 What's next?
-1. Discuss context (/gsd:discuss-phase ${PHASE}) - Let me ask you questions to build comprehensive context
-2. Plan this phase (/gsd:plan-phase ${PHASE}) - Create detailed execution plans
+1. Discuss context (use the `gsd_discuss_phase` tool with { "phase": "${PHASE}" }) - Let me ask you questions to build comprehensive context
+2. Plan this phase (use the `gsd_plan_phase` tool with { "phase": "${PHASE}" }) - Create detailed execution plans
 3. Re-examine assumptions - I'll analyze again with your corrections
 4. Done for now
 ```
@@ -176,3 +176,4 @@ If "Re-examine": Return to analyze_phase with updated understanding
 - User feedback acknowledged
 - Clear next steps offered
 </success_criteria>
+</output>

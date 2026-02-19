@@ -11,15 +11,15 @@ Read all files referenced by the invoking prompt's execution_context before star
 <step name="parse_arguments">
 Parse the command arguments:
 - Argument is the phase number to remove (integer or decimal)
-- Example: `/gsd:remove-phase 17` → phase = 17
-- Example: `/gsd:remove-phase 16.1` → phase = 16.1
+- Example: `gsd_remove_phase` tool with phase 17
+- Example: `gsd_remove_phase` tool with phase 16.1
 
 If no argument provided:
 
 ```
 ERROR: Phase number required
-Usage: /gsd:remove-phase <phase-number>
-Example: /gsd:remove-phase 17
+Usage: Use the `gsd_remove_phase` tool with a phase number
+Example: `gsd_remove_phase` tool with `{ "phase": 17 }`
 ```
 
 Exit.
@@ -28,11 +28,7 @@ Exit.
 <step name="init_context">
 Load phase operation context:
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init phase-op "${target}")
-```
-
-Extract: `phase_found`, `phase_dir`, `phase_number`, `commit_docs`, `roadmap_exists`.
+Call the `gsd_init_phase_op` tool with `{ "phase": "{target}" }`. Extract: `phase_found`, `phase_dir`, `phase_number`, `commit_docs`, `roadmap_exists`.
 
 Also read STATE.md and ROADMAP.md content for parsing current position.
 </step>
@@ -52,7 +48,7 @@ Only future phases can be removed:
 - Current phase: {current}
 - Phase {target} is current or completed
 
-To abandon current work, use /gsd:pause-work instead.
+To abandon current work, use the `gsd_pause_work` tool instead.
 ```
 
 Exit.
@@ -78,17 +74,13 @@ Wait for confirmation.
 <step name="execute_removal">
 **Delegate the entire removal operation to gsd-tools:**
 
-```bash
-RESULT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs phase remove "${target}")
-```
+Call the `gsd_phase_remove` tool with `{ "phase": "{target}" }`.
 
-If the phase has executed plans (SUMMARY.md files), gsd-tools will error. Use `--force` only if the user confirms:
+If the phase has executed plans (SUMMARY.md files), the tool will error. Use force mode only if the user confirms:
 
-```bash
-RESULT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs phase remove "${target}" --force)
-```
+Call the `gsd_phase_remove` tool with `{ "phase": "{target}", "force": true }`.
 
-The CLI handles:
+The tool handles:
 - Deleting the phase directory
 - Renumbering all subsequent directories (in reverse order to avoid conflicts)
 - Renaming all files inside renumbered directories (PLAN.md, SUMMARY.md, etc.)
@@ -101,9 +93,7 @@ Extract from result: `removed`, `directory_deleted`, `renamed_directories`, `ren
 <step name="commit">
 Stage and commit the removal:
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "chore: remove phase {target} ({original-phase-name})" --files .planning/
-```
+Call the `gsd_commit_work` tool with `{ "message": "chore: remove phase {target} ({original-phase-name})", "files": ".planning/" }`.
 
 The commit message preserves the historical record of what was removed.
 </step>
@@ -125,7 +115,7 @@ Changes:
 ## What's Next
 
 Would you like to:
-- `/gsd:progress` — see updated roadmap status
+- Use the `gsd_progress` tool -- see updated roadmap status
 - Continue with current phase
 - Review roadmap
 
@@ -139,8 +129,8 @@ Would you like to:
 
 - Don't remove completed phases (have SUMMARY.md files) without --force
 - Don't remove current or past phases
-- Don't manually renumber — use `gsd-tools phase remove` which handles all renumbering
-- Don't add "removed phase" notes to STATE.md — git commit is the record
+- Don't manually renumber -- use the `gsd_phase_remove` tool which handles all renumbering
+- Don't add "removed phase" notes to STATE.md -- git commit is the record
 - Don't modify completed phase directories
 </anti_patterns>
 
@@ -148,7 +138,8 @@ Would you like to:
 Phase removal is complete when:
 
 - [ ] Target phase validated as future/unstarted
-- [ ] `gsd-tools phase remove` executed successfully
+- [ ] `gsd_phase_remove` tool executed successfully
 - [ ] Changes committed with descriptive message
 - [ ] User informed of changes
 </success_criteria>
+</output>

@@ -1,5 +1,5 @@
 <purpose>
-Create all phases necessary to close gaps identified by `/gsd:audit-milestone`. Reads MILESTONE-AUDIT.md, groups gaps into logical phases, creates phase entries in ROADMAP.md, and offers to plan each phase. One command creates all fix phases — no manual `/gsd:add-phase` per gap.
+Create all phases necessary to close gaps identified by the `gsd_audit_milestone` tool. Reads MILESTONE-AUDIT.md, groups gaps into logical phases, creates phase entries in ROADMAP.md, and offers to plan each phase. One command creates all fix phases — no manual `gsd_add_phase` per gap.
 </purpose>
 
 <required_reading>
@@ -22,7 +22,7 @@ Parse YAML frontmatter to extract structured gaps:
 
 If no audit file exists or has no gaps, error:
 ```
-No audit gaps found. Run `/gsd:audit-milestone` first.
+No audit gaps found. Run the `gsd_audit_milestone` tool first.
 ```
 
 ## 2. Prioritize Gaps
@@ -63,11 +63,8 @@ Gap: Flow "View dashboard" broken at data fetch
 ## 4. Determine Phase Numbers
 
 Find highest existing phase:
-```bash
-# Get sorted phase list, extract last one
-PHASES=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs phases list)
-HIGHEST=$(echo "$PHASES" | jq -r '.directories[-1]')
-```
+
+Call the `gsd_list_phases` tool to get sorted phase list, extract last one.
 
 New phases continue from there:
 - If Phase 5 is highest, gaps become Phase 6, 7, 8...
@@ -146,9 +143,7 @@ mkdir -p ".planning/phases/{NN}-{name}"
 
 ## 9. Commit Roadmap and Requirements Update
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs(roadmap): add gap closure phases {N}-{M}" --files .planning/ROADMAP.md .planning/REQUIREMENTS.md
-```
+Call the `gsd_commit_work` tool with `{ "message": "docs(roadmap): add gap closure phases {N}-{M}", "files": ".planning/ROADMAP.md .planning/REQUIREMENTS.md" }`.
 
 ## 10. Offer Next Steps
 
@@ -164,22 +159,22 @@ node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs(roadmap): add gap cl
 
 **Plan first gap closure phase**
 
-`/gsd:plan-phase {N}`
+Use the `gsd_plan_phase` tool with `{ "phase": "{N}" }`
 
-<sub>`/clear` first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ---
 
 **Also available:**
-- `/gsd:execute-phase {N}` — if plans already exist
+- Use the `gsd_execute_phase` tool with `{ "phase": "{N}" }` — if plans already exist
 - `cat .planning/ROADMAP.md` — see updated roadmap
 
 ---
 
 **After all gap phases complete:**
 
-`/gsd:audit-milestone` — re-audit to verify gaps closed
-`/gsd:complete-milestone {version}` — archive when audit passes
+Use the `gsd_audit_milestone` tool — re-audit to verify gaps closed
+Use the `gsd_complete_milestone` tool with `{ "version": "{version}" }` — archive when audit passes
 ```
 
 </process>
@@ -270,5 +265,6 @@ becomes:
 - [ ] Coverage count updated in REQUIREMENTS.md
 - [ ] Phase directories created
 - [ ] Changes committed (includes REQUIREMENTS.md)
-- [ ] User knows to run `/gsd:plan-phase` next
+- [ ] User knows to run `gsd_plan_phase` tool next
 </success_criteria>
+</output>

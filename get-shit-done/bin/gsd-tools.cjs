@@ -306,7 +306,15 @@ async function main() {
         if (args[1] === 'complete') {
           const nameIndex = args.indexOf('--name');
           let name = null;
-          if (nameIndex !== -1) name = args[nameIndex + 1]; // Simplified arg parsing for rewrite
+          if (nameIndex !== -1) {
+            // Capture all words after --name until next flag or end
+            const nameParts = [];
+            for (let i = nameIndex + 1; i < args.length; i++) {
+              if (args[i].startsWith('--')) break;
+              nameParts.push(args[i]);
+            }
+            name = nameParts.join(' ') || null;
+          }
           const res = gsd.milestoneComplete(cwd, args[2], { name, archivePhases: args.includes('--archive-phases') });
           output(res, raw);
         }

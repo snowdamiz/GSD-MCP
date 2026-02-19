@@ -7,7 +7,7 @@ Debug issues using scientific method with subagent isolation.
 </objective>
 
 <context>
-User's issue: $ARGUMENTS
+User's issue: <arguments>
 
 Check for active sessions:
 ```bash
@@ -19,27 +19,20 @@ ls .planning/debug/*.md 2>/dev/null | grep -v resolved | head -5
 
 ## 0. Initialize Context
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs state load)
-```
-
-Extract `commit_docs` from init JSON. Resolve debugger model:
-```bash
-DEBUGGER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs resolve-model gsd-debugger --raw)
-```
+Call the `gsd_resolve_model` tool with `{ "agent": "gsd-debugger" }` to get `debugger_model`.
 
 ## 1. Check Active Sessions
 
-If active sessions exist AND no $ARGUMENTS:
+If active sessions exist AND no <arguments>:
 - List sessions with status, hypothesis, next action
 - User picks number to resume OR describes new issue
 
-If $ARGUMENTS provided OR user describes new issue:
+If <arguments> provided OR user describes new issue:
 - Continue to symptom gathering
 
 ## 2. Gather Symptoms (if new issue)
 
-Use AskUserQuestion for each:
+Prompt the user for each:
 
 1. **Expected behavior** - What should happen?
 2. **Actual behavior** - What happens instead?
@@ -78,14 +71,10 @@ Create: .planning/debug/{slug}.md
 </debug_file>
 ```
 
-```
-Task(
-  prompt=filled_prompt,
-  subagent_type="gsd-debugger",
-  model="{debugger_model}",
-  description="Debug {slug}"
-)
-```
+<delegate>
+  <agent type="gsd-debugger" model="{debugger_model}">Debug {slug}</agent>
+  <prompt>${filled_prompt}</prompt>
+</delegate>
 
 ## 4. Handle Agent Return
 
@@ -93,7 +82,7 @@ Task(
 - Display root cause and evidence summary
 - Offer options:
   - "Fix now" - spawn fix subagent
-  - "Plan fix" - suggest /gsd:plan-phase --gaps
+  - "Plan fix" - suggest using the `gsd_plan_phase` tool with --gaps
   - "Manual fix" - done
 
 **If `## CHECKPOINT REACHED`:**
@@ -131,14 +120,10 @@ goal: find_and_fix
 </mode>
 ```
 
-```
-Task(
-  prompt=continuation_prompt,
-  subagent_type="gsd-debugger",
-  model="{debugger_model}",
-  description="Continue debug {slug}"
-)
-```
+<delegate>
+  <agent type="gsd-debugger" model="{debugger_model}">Continue debug {slug}</agent>
+  <prompt>${continuation_prompt}</prompt>
+</delegate>
 
 </process>
 
@@ -149,3 +134,4 @@ Task(
 - [ ] Checkpoints handled correctly
 - [ ] Root cause confirmed before fixing
 </success_criteria>
+</output>

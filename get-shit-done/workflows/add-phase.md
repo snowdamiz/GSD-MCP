@@ -11,15 +11,15 @@ Read all files referenced by the invoking prompt's execution_context before star
 <step name="parse_arguments">
 Parse the command arguments:
 - All arguments become the phase description
-- Example: `/gsd:add-phase Add authentication` → description = "Add authentication"
-- Example: `/gsd:add-phase Fix critical performance issues` → description = "Fix critical performance issues"
+- Example: `gsd_add_phase` tool with `{ "description": "Add authentication" }` → description = "Add authentication"
+- Example: `gsd_add_phase` tool with `{ "description": "Fix critical performance issues" }` → description = "Fix critical performance issues"
 
 If no arguments provided:
 
 ```
 ERROR: Phase description required
-Usage: /gsd:add-phase <description>
-Example: /gsd:add-phase Add authentication system
+Usage: gsd_add_phase tool with { "description": "<text>" }
+Example: gsd_add_phase tool with { "description": "Add authentication system" }
 ```
 
 Exit.
@@ -28,14 +28,12 @@ Exit.
 <step name="init_context">
 Load phase operation context:
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init phase-op "0")
-```
+Call the `gsd_init_phase_op` tool with `{ "phase": "0" }`.
 
 Check `roadmap_exists` from init JSON. If false:
 ```
 ERROR: No roadmap found (.planning/ROADMAP.md)
-Run /gsd:new-project to initialize.
+Run the `gsd_new_project` tool to initialize.
 ```
 Exit.
 </step>
@@ -43,11 +41,9 @@ Exit.
 <step name="add_phase">
 **Delegate the phase addition to gsd-tools:**
 
-```bash
-RESULT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs phase add "${description}")
-```
+Call the `gsd_add_phase_atomic` tool with `{ "description": "${description}" }`.
 
-The CLI handles:
+The tool handles:
 - Finding the highest existing integer phase number
 - Calculating next phase number (max + 1)
 - Generating slug from description
@@ -86,14 +82,14 @@ Roadmap updated: .planning/ROADMAP.md
 
 **Phase {N}: {description}**
 
-`/gsd:plan-phase {N}`
+Use the `gsd_plan_phase` tool with `{ "phase": "{N}" }`
 
-<sub>`/clear` first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ---
 
 **Also available:**
-- `/gsd:add-phase <description>` — add another phase
+- Use the `gsd_add_phase` tool to add another phase
 - Review roadmap
 
 ---
@@ -103,9 +99,10 @@ Roadmap updated: .planning/ROADMAP.md
 </process>
 
 <success_criteria>
-- [ ] `gsd-tools phase add` executed successfully
+- [ ] `gsd_add_phase_atomic` tool executed successfully
 - [ ] Phase directory created
 - [ ] Roadmap updated with new phase entry
 - [ ] STATE.md updated with roadmap evolution note
 - [ ] User informed of next steps
 </success_criteria>
+</output>

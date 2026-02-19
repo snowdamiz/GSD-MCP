@@ -11,24 +11,20 @@ Read all files referenced by the invoking prompt's execution_context before star
 <step name="init_context">
 Load todo context:
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init todos)
-```
-
-Extract from init JSON: `todo_count`, `todos`, `pending_dir`.
+Call the `gsd_init_todos` tool. Extract from the returned JSON: `todo_count`, `todos`, `pending_dir`.
 
 If `todo_count` is 0:
 ```
 No pending todos.
 
-Todos are captured during work sessions with /gsd:add-todo.
+Todos are captured during work sessions with the `gsd_add_todo` tool.
 
 ---
 
 Would you like to:
 
-1. Continue with current phase (/gsd:progress)
-2. Add a todo now (/gsd:add-todo)
+1. Continue with current phase (use the `gsd_progress` tool)
+2. Add a todo now (use the `gsd_add_todo` tool)
 ```
 
 Exit.
@@ -36,8 +32,8 @@ Exit.
 
 <step name="parse_filter">
 Check for area filter in arguments:
-- `/gsd:check-todos` → show all
-- `/gsd:check-todos api` → filter to area:api only
+- `gsd_check_todos` tool with no args → show all
+- `gsd_check_todos` tool with `{ "area": "api" }` → filter to area:api only
 </step>
 
 <step name="list_todos">
@@ -55,7 +51,7 @@ Pending Todos:
 ---
 
 Reply with a number to view details, or:
-- `/gsd:check-todos [area]` to filter by area
+- Use the `gsd_check_todos` tool with `{ "area": "[area]" }` to filter by area
 - `q` to exit
 ```
 
@@ -101,25 +97,23 @@ If `.planning/ROADMAP.md` exists:
 <step name="offer_actions">
 **If todo maps to a roadmap phase:**
 
-Use AskUserQuestion:
-- header: "Action"
-- question: "This todo relates to Phase [N]: [name]. What would you like to do?"
-- options:
-  - "Work on it now" — move to done, start working
-  - "Add to phase plan" — include when planning Phase [N]
-  - "Brainstorm approach" — think through before deciding
-  - "Put it back" — return to list
+<prompt_user>
+  <question header="Action">This todo relates to Phase [N]: [name]. What would you like to do?</question>
+  <option label="Work on it now">Move to done, start working</option>
+  <option label="Add to phase plan">Include when planning Phase [N]</option>
+  <option label="Brainstorm approach">Think through before deciding</option>
+  <option label="Put it back">Return to list</option>
+</prompt_user>
 
 **If no roadmap match:**
 
-Use AskUserQuestion:
-- header: "Action"
-- question: "What would you like to do with this todo?"
-- options:
-  - "Work on it now" — move to done, start working
-  - "Create a phase" — /gsd:add-phase with this scope
-  - "Brainstorm approach" — think through before deciding
-  - "Put it back" — return to list
+<prompt_user>
+  <question header="Action">What would you like to do with this todo?</question>
+  <option label="Work on it now">Move to done, start working</option>
+  <option label="Create a phase">Use the gsd_add_phase tool with this scope</option>
+  <option label="Brainstorm approach">Think through before deciding</option>
+  <option label="Put it back">Return to list</option>
+</prompt_user>
 </step>
 
 <step name="execute_action">
@@ -133,7 +127,7 @@ Update STATE.md todo count. Present problem/solution context. Begin work or ask 
 Note todo reference in phase planning notes. Keep in pending. Return to list or exit.
 
 **Create a phase:**
-Display: `/gsd:add-phase [description from todo]`
+Display: Use the `gsd_add_phase` tool with `{ "description": "[description from todo]" }`
 Keep in pending. User runs command in fresh context.
 
 **Brainstorm approach:**
@@ -146,7 +140,7 @@ Return to list_todos step.
 <step name="update_state">
 After any action that changes todo count:
 
-Re-run `init todos` to get updated count, then update STATE.md "### Pending Todos" section if exists.
+Re-run the `gsd_init_todos` tool to get updated count, then update STATE.md "### Pending Todos" section if exists.
 </step>
 
 <step name="git_commit">
@@ -154,8 +148,9 @@ If todo was moved to done/, commit the change:
 
 ```bash
 git rm --cached .planning/todos/pending/[filename] 2>/dev/null || true
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs: start work on todo - [title]" --files .planning/todos/done/[filename] .planning/STATE.md
 ```
+
+Call the `gsd_commit_work` tool with `{ "message": "docs: start work on todo - [title]", "files": ".planning/todos/done/[filename] .planning/STATE.md" }`.
 
 Tool respects `commit_docs` config and gitignore automatically.
 
@@ -174,3 +169,4 @@ Confirm: "Committed: docs: start work on todo - [title]"
 - [ ] STATE.md updated if todo count changed
 - [ ] Changes committed to git (if todo moved to done/)
 </success_criteria>
+</output>

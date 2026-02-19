@@ -11,10 +11,7 @@ Read all files referenced by the invoking prompt's execution_context before star
 <step name="ensure_and_load_config">
 Ensure config exists and load current state:
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs config-ensure-section
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs state load)
-```
+Call the `gsd_config_ensure` tool, then load current config state.
 
 Creates `.planning/config.json` with defaults if missing and loads current config values.
 </step>
@@ -33,68 +30,45 @@ Parse current values (default to `true` if not present):
 </step>
 
 <step name="present_settings">
-Use AskUserQuestion with current values pre-selected:
+Present settings to user with current values pre-selected:
 
-```
-AskUserQuestion([
-  {
-    question: "Which model profile for agents?",
-    header: "Model",
-    multiSelect: false,
-    options: [
-      { label: "Quality", description: "Opus everywhere except verification (highest cost)" },
-      { label: "Balanced (Recommended)", description: "Opus for planning, Sonnet for execution/verification" },
-      { label: "Budget", description: "Sonnet for writing, Haiku for research/verification (lowest cost)" }
-    ]
-  },
-  {
-    question: "Spawn Plan Researcher? (researches domain before planning)",
-    header: "Research",
-    multiSelect: false,
-    options: [
-      { label: "Yes", description: "Research phase goals before planning" },
-      { label: "No", description: "Skip research, plan directly" }
-    ]
-  },
-  {
-    question: "Spawn Plan Checker? (verifies plans before execution)",
-    header: "Plan Check",
-    multiSelect: false,
-    options: [
-      { label: "Yes", description: "Verify plans meet phase goals" },
-      { label: "No", description: "Skip plan verification" }
-    ]
-  },
-  {
-    question: "Spawn Execution Verifier? (verifies phase completion)",
-    header: "Verifier",
-    multiSelect: false,
-    options: [
-      { label: "Yes", description: "Verify must-haves after execution" },
-      { label: "No", description: "Skip post-execution verification" }
-    ]
-  },
-  {
-    question: "Auto-advance pipeline? (discuss → plan → execute automatically)",
-    header: "Auto",
-    multiSelect: false,
-    options: [
-      { label: "No (Recommended)", description: "Manual /clear + paste between stages" },
-      { label: "Yes", description: "Chain stages via Task() subagents (same isolation)" }
-    ]
-  },
-  {
-    question: "Git branching strategy?",
-    header: "Branching",
-    multiSelect: false,
-    options: [
-      { label: "None (Recommended)", description: "Commit directly to current branch" },
-      { label: "Per Phase", description: "Create branch for each phase (gsd/phase-{N}-{name})" },
-      { label: "Per Milestone", description: "Create branch for entire milestone (gsd/{version}-{name})" }
-    ]
-  }
-])
-```
+<prompt_user>
+  <question header="Model">Which model profile for agents?</question>
+  <option label="Quality">Opus everywhere except verification (highest cost)</option>
+  <option label="Balanced (Recommended)">Opus for planning, Sonnet for execution/verification</option>
+  <option label="Budget">Sonnet for writing, Haiku for research/verification (lowest cost)</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Research">Spawn Plan Researcher? (researches domain before planning)</question>
+  <option label="Yes">Research phase goals before planning</option>
+  <option label="No">Skip research, plan directly</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Plan Check">Spawn Plan Checker? (verifies plans before execution)</question>
+  <option label="Yes">Verify plans meet phase goals</option>
+  <option label="No">Skip plan verification</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Verifier">Spawn Execution Verifier? (verifies phase completion)</question>
+  <option label="Yes">Verify must-haves after execution</option>
+  <option label="No">Skip post-execution verification</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Auto">Auto-advance pipeline? (discuss → plan → execute automatically)</question>
+  <option label="No (Recommended)">Manual fresh conversation between stages</option>
+  <option label="Yes">Chain stages via delegated subagents (same isolation)</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Branching">Git branching strategy?</question>
+  <option label="None (Recommended)">Commit directly to current branch</option>
+  <option label="Per Phase">Create branch for each phase (gsd/phase-{N}-{name})</option>
+  <option label="Per Milestone">Create branch for entire milestone (gsd/{version}-{name})</option>
+</prompt_user>
 </step>
 
 <step name="update_config">
@@ -122,19 +96,11 @@ Write updated config to `.planning/config.json`.
 <step name="save_as_defaults">
 Ask whether to save these settings as global defaults for future projects:
 
-```
-AskUserQuestion([
-  {
-    question: "Save these as default settings for all new projects?",
-    header: "Defaults",
-    multiSelect: false,
-    options: [
-      { label: "Yes", description: "New projects start with these settings (saved to ~/.gsd/defaults.json)" },
-      { label: "No", description: "Only apply to this project" }
-    ]
-  }
-])
-```
+<prompt_user>
+  <question header="Defaults">Save these as default settings for all new projects?</question>
+  <option label="Yes">New projects start with these settings (saved to ~/.gsd/defaults.json)</option>
+  <option label="No">Only apply to this project</option>
+</prompt_user>
 
 If "Yes": write the same config object (minus project-specific fields like `brave_search`) to `~/.gsd/defaults.json`:
 
@@ -179,13 +145,13 @@ Display:
 | Git Branching        | {None/Per Phase/Per Milestone} |
 | Saved as Defaults    | {Yes/No} |
 
-These settings apply to future /gsd:plan-phase and /gsd:execute-phase runs.
+These settings apply to future `gsd_plan_phase` and `gsd_execute_phase` tool runs.
 
 Quick commands:
-- /gsd:set-profile <profile> — switch model profile
-- /gsd:plan-phase --research — force research
-- /gsd:plan-phase --skip-research — skip research
-- /gsd:plan-phase --skip-verify — skip plan check
+- Use the `gsd_set_profile` tool with `{ "profile": "<profile>" }` — switch model profile
+- Use the `gsd_plan_phase` tool with --research — force research
+- Use the `gsd_plan_phase` tool with --skip-research — skip research
+- Use the `gsd_plan_phase` tool with --skip-verify — skip plan check
 ```
 </step>
 
@@ -198,3 +164,4 @@ Quick commands:
 - [ ] User offered to save as global defaults (~/.gsd/defaults.json)
 - [ ] Changes confirmed to user
 </success_criteria>
+</output>

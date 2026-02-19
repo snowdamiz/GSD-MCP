@@ -110,13 +110,13 @@ Always at end of major completions.
 
 `{copy-paste command}`
 
-<sub>`/clear` first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ───────────────────────────────────────────────────────────────
 
 **Also available:**
-- `/gsd:alternative-1` — description
-- `/gsd:alternative-2` — description
+- `gsd_alternative_1` tool — description
+- `gsd_alternative_2` tool — description
 
 ───────────────────────────────────────────────────────────────
 ```

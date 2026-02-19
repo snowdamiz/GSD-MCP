@@ -10,23 +10,15 @@ Read all files referenced by the invoking prompt's execution_context before star
 
 ## 0. Initialize Milestone Context
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init milestone-op)
-```
-
-Extract from init JSON: `milestone_version`, `milestone_name`, `phase_count`, `completed_phases`, `commit_docs`.
+Call the `gsd_init_milestone_op` tool. Extract from the returned JSON: `milestone_version`, `milestone_name`, `phase_count`, `completed_phases`, `commit_docs`.
 
 Resolve integration checker model:
-```bash
-CHECKER_MODEL=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs resolve-model gsd-integration-checker --raw)
-```
+
+Call the `gsd_resolve_model` tool with `{ "role": "gsd-integration-checker" }` to get the model identifier.
 
 ## 1. Determine Milestone Scope
 
-```bash
-# Get phases in milestone (sorted numerically, handles decimals)
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs phases list
-```
+Call the `gsd_list_phases` tool to get phases in the milestone (sorted numerically, handles decimals).
 
 - Parse version from arguments or detect current from ROADMAP.md
 - Identify all phase directories in scope
@@ -37,46 +29,38 @@ node ~/.claude/get-shit-done/bin/gsd-tools.cjs phases list
 
 For each phase directory, read the VERIFICATION.md:
 
-```bash
-# For each phase, use find-phase to resolve the directory (handles archived phases)
-PHASE_INFO=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs find-phase 01 --raw)
-# Extract directory from JSON, then read VERIFICATION.md from that directory
-# Repeat for each phase number from ROADMAP.md
-```
+Call the `gsd_find_phase` tool with `{ "phase": "01" }` to resolve the directory (handles archived phases). Extract the directory from the JSON, then read VERIFICATION.md from that directory. Repeat for each phase number from ROADMAP.md.
 
 From each VERIFICATION.md, extract:
 - **Status:** passed | gaps_found
-- **Critical gaps:** (if any — these are blockers)
+- **Critical gaps:** (if any -- these are blockers)
 - **Non-critical gaps:** tech debt, deferred items, warnings
 - **Anti-patterns found:** TODOs, stubs, placeholders
 - **Requirements coverage:** which requirements satisfied/blocked
 
-If a phase is missing VERIFICATION.md, flag it as "unverified phase" — this is a blocker.
+If a phase is missing VERIFICATION.md, flag it as "unverified phase" -- this is a blocker.
 
 ## 3. Spawn Integration Checker
 
 With phase context collected:
 
-Extract `MILESTONE_REQ_IDS` from REQUIREMENTS.md traceability table — all REQ-IDs assigned to phases in this milestone.
+Extract `MILESTONE_REQ_IDS` from REQUIREMENTS.md traceability table -- all REQ-IDs assigned to phases in this milestone.
 
-```
-Task(
-  prompt="Check cross-phase integration and E2E flows.
+<delegate>
+  <agent type="gsd-integration-checker" model="{integration_checker_model}">Check cross-phase integration for milestone</agent>
+  <prompt>Check cross-phase integration and E2E flows.
 
 Phases: {phase_dirs}
 Phase exports: {from SUMMARYs}
 API routes: {routes created}
 
 Milestone Requirements:
-{MILESTONE_REQ_IDS — list each REQ-ID with description and assigned phase}
+{MILESTONE_REQ_IDS -- list each REQ-ID with description and assigned phase}
 
 MUST map each integration finding to affected requirement IDs where applicable.
 
-Verify cross-phase wiring and E2E user flows.",
-  subagent_type="gsd-integration-checker",
-  model="{integration_checker_model}"
-)
-```
+Verify cross-phase wiring and E2E user flows.</prompt>
+</delegate>
 
 ## 4. Collect Results
 
@@ -101,18 +85,13 @@ For each phase's VERIFICATION.md, extract the expanded requirements table:
 
 ### 5c. Extract SUMMARY.md Frontmatter Cross-Check
 
-For each phase's SUMMARY.md, extract `requirements-completed` from YAML frontmatter:
-```bash
-for summary in .planning/phases/*-*/*-SUMMARY.md; do
-  node ~/.claude/get-shit-done/bin/gsd-tools.cjs summary-extract "$summary" --fields requirements_completed | jq -r '.requirements_completed'
-done
-```
+For each phase's SUMMARY.md, call the `gsd_summary_extract` tool with `{ "path": "<summary_path>", "fields": "requirements_completed" }` to extract `requirements_completed` from YAML frontmatter.
 
 ### 5d. Status Determination Matrix
 
 For each REQ-ID, determine status using all three sources:
 
-| VERIFICATION.md Status | SUMMARY Frontmatter | REQUIREMENTS.md | → Final Status |
+| VERIFICATION.md Status | SUMMARY Frontmatter | REQUIREMENTS.md | -> Final Status |
 |------------------------|---------------------|-----------------|----------------|
 | passed                 | listed              | `[x]`           | **satisfied**  |
 | passed                 | listed              | `[ ]`           | **satisfied** (update checkbox) |
@@ -125,7 +104,7 @@ For each REQ-ID, determine status using all three sources:
 
 **REQUIRED:** Any `unsatisfied` requirement MUST force `gaps_found` status on the milestone audit.
 
-**Orphan detection:** Requirements present in REQUIREMENTS.md traceability table but absent from ALL phase VERIFICATION.md files MUST be flagged as orphaned. Orphaned requirements are treated as `unsatisfied` — they were assigned but never verified by any phase.
+**Orphan detection:** Requirements present in REQUIREMENTS.md traceability table but absent from ALL phase VERIFICATION.md files MUST be flagged as orphaned. Orphaned requirements are treated as `unsatisfied` -- they were assigned but never verified by any phase.
 
 ## 6. Aggregate into v{version}-MILESTONE-AUDIT.md
 
@@ -166,9 +145,9 @@ tech_debt:  # Non-critical, deferred
 Plus full markdown report with tables for requirements, phases, integration, tech debt.
 
 **Status values:**
-- `passed` — all requirements met, no critical gaps, minimal tech debt
-- `gaps_found` — critical blockers exist
-- `tech_debt` — no blockers but accumulated deferred items need review
+- `passed` -- all requirements met, no critical gaps, minimal tech debt
+- `gaps_found` -- critical blockers exist
+- `tech_debt` -- no blockers but accumulated deferred items need review
 
 ## 7. Present Results
 
@@ -183,30 +162,30 @@ Output this markdown directly (not as a code block). Route based on status:
 
 **If passed:**
 
-## ✓ Milestone {version} — Audit Passed
+## Milestone {version} -- Audit Passed
 
 **Score:** {N}/{M} requirements satisfied
 **Report:** .planning/v{version}-MILESTONE-AUDIT.md
 
 All requirements covered. Cross-phase integration verified. E2E flows complete.
 
-───────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 
-## ▶ Next Up
+## Next Up
 
-**Complete milestone** — archive and tag
+**Complete milestone** -- archive and tag
 
-/gsd:complete-milestone {version}
+Use the `gsd_complete_milestone` tool with `{ "version": "{version}" }`
 
-<sub>/clear first → fresh context window</sub>
+Start a fresh conversation for best results
 
-───────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 
 ---
 
 **If gaps_found:**
 
-## ⚠ Milestone {version} — Gaps Found
+## Milestone {version} -- Gaps Found
 
 **Score:** {N}/{M} requirements satisfied
 **Report:** .planning/v{version}-MILESTONE-AUDIT.md
@@ -220,36 +199,36 @@ All requirements covered. Cross-phase integration verified. E2E flows complete.
 ### Cross-Phase Issues
 
 {For each integration gap:}
-- **{from} → {to}:** {issue}
+- **{from} -> {to}:** {issue}
 
 ### Broken Flows
 
 {For each flow gap:}
 - **{flow name}:** breaks at {step}
 
-───────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 
-## ▶ Next Up
+## Next Up
 
-**Plan gap closure** — create phases to complete milestone
+**Plan gap closure** -- create phases to complete milestone
 
-/gsd:plan-milestone-gaps
+Use the `gsd_plan_milestone_gaps` tool
 
-<sub>/clear first → fresh context window</sub>
+Start a fresh conversation for best results
 
-───────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 
 **Also available:**
-- cat .planning/v{version}-MILESTONE-AUDIT.md — see full report
-- /gsd:complete-milestone {version} — proceed anyway (accept tech debt)
+- cat .planning/v{version}-MILESTONE-AUDIT.md -- see full report
+- Use the `gsd_complete_milestone` tool with `{ "version": "{version}" }` -- proceed anyway (accept tech debt)
 
-───────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 
 ---
 
 **If tech_debt (no blockers but accumulated debt):**
 
-## ⚡ Milestone {version} — Tech Debt Review
+## Milestone {version} -- Tech Debt Review
 
 **Score:** {N}/{M} requirements satisfied
 **Report:** .planning/v{version}-MILESTONE-AUDIT.md
@@ -265,21 +244,21 @@ All requirements met. No critical blockers. Accumulated tech debt needs review.
 
 ### Total: {N} items across {M} phases
 
-───────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 
-## ▶ Options
+## Options
 
-**A. Complete milestone** — accept debt, track in backlog
+**A. Complete milestone** -- accept debt, track in backlog
 
-/gsd:complete-milestone {version}
+Use the `gsd_complete_milestone` tool with `{ "version": "{version}" }`
 
-**B. Plan cleanup phase** — address debt before completing
+**B. Plan cleanup phase** -- address debt before completing
 
-/gsd:plan-milestone-gaps
+Use the `gsd_plan_milestone_gaps` tool
 
-<sub>/clear first → fresh context window</sub>
+Start a fresh conversation for best results
 
-───────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 </offer_next>
 
 <success_criteria>
@@ -292,6 +271,7 @@ All requirements met. No critical blockers. Accumulated tech debt needs review.
 - [ ] Tech debt and deferred gaps aggregated
 - [ ] Integration checker spawned with milestone requirement IDs
 - [ ] v{version}-MILESTONE-AUDIT.md created with structured requirement gap objects
-- [ ] FAIL gate enforced — any unsatisfied requirement forces gaps_found status
+- [ ] FAIL gate enforced -- any unsatisfied requirement forces gaps_found status
 - [ ] Results presented with actionable next steps
 </success_criteria>
+</output>

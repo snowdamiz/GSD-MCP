@@ -4,7 +4,7 @@ Produces DISCOVERY.md (for Level 2-3) that informs PLAN.md creation.
 
 Called from plan-phase.md's mandatory_discovery step with a depth parameter.
 
-NOTE: For comprehensive ecosystem research ("how do experts build this"), use /gsd:research-phase instead, which produces RESEARCH.md.
+NOTE: For comprehensive ecosystem research ("how do experts build this"), use the `gsd_research_phase` tool instead, which produces RESEARCH.md.
 </purpose>
 
 <depth_levels>
@@ -214,14 +214,13 @@ Write `.planning/phases/XX-name/DISCOVERY.md`:
 After creating DISCOVERY.md, check confidence level.
 
 If confidence is LOW:
-Use AskUserQuestion:
 
-- header: "Low Conf."
-- question: "Discovery confidence is LOW: [reason]. How would you like to proceed?"
-- options:
-  - "Dig deeper" - Do more research before planning
-  - "Proceed anyway" - Accept uncertainty, plan with caveats
-  - "Pause" - I need to think about this
+<prompt_user>
+  <question header="Low Conf.">Discovery confidence is LOW: [reason]. How would you like to proceed?</question>
+  <option label="Dig deeper">Do more research before planning</option>
+  <option label="Proceed anyway">Accept uncertainty, plan with caveats</option>
+  <option label="Pause">I need to think about this</option>
+</prompt_user>
 
 If confidence is MEDIUM:
 Inline: "Discovery complete (medium confidence). [brief reason]. Proceed to planning?"
@@ -252,8 +251,8 @@ Confidence: [level]
 
 What's next?
 
-1. Discuss phase context (/gsd:discuss-phase [current-phase])
-2. Create phase plan (/gsd:plan-phase [current-phase])
+1. Discuss phase context (use the `gsd_discuss_phase` tool with { "phase": "[current-phase]" })
+2. Create phase plan (use the `gsd_plan_phase` tool with { "phase": "[current-phase]" })
 3. Refine discovery (dig deeper)
 4. Review discovery
 
@@ -287,3 +286,4 @@ NOTE: DISCOVERY.md is NOT committed separately. It will be committed with phase 
 - Confidence gate passed
 - Ready to inform PLAN.md creation
 </success_criteria>
+</output>

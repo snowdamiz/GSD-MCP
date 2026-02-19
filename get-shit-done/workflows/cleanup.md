@@ -93,7 +93,11 @@ No phase directories found to archive. Phases may have been removed or archived 
 
 Stop here.
 
-AskUserQuestion: "Proceed with archiving?" with options: "Yes — archive listed phases" | "Cancel"
+<prompt_user>
+  <question header="Archive Phases">Proceed with archiving?</question>
+  <option label="Yes">Archive listed phases</option>
+  <option label="Cancel">Do not archive</option>
+</prompt_user>
 
 If "Cancel": Stop.
 
@@ -121,9 +125,7 @@ Repeat for all milestones in the cleanup set.
 
 Commit the changes:
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "chore: archive phase directories from completed milestones" --files .planning/milestones/ .planning/phases/
-```
+Call the `gsd_commit_work` tool with `{ "message": "chore: archive phase directories from completed milestones", "files": ".planning/milestones/ .planning/phases/" }`.
 
 </step>
 
@@ -150,3 +152,4 @@ Archived:
 - [ ] Changes committed
 
 </success_criteria>
+</output>

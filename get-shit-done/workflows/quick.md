@@ -11,19 +11,15 @@ Read all files referenced by the invoking prompt's execution_context before star
 <process>
 **Step 1: Parse arguments and get task description**
 
-Parse `$ARGUMENTS` for:
+Parse `<arguments>` for:
 - `--full` flag → store as `$FULL_MODE` (true/false)
 - Remaining text → use as `$DESCRIPTION` if non-empty
 
 If `$DESCRIPTION` is empty after parsing, prompt user interactively:
 
-```
-AskUserQuestion(
-  header: "Quick Task",
-  question: "What do you want to do?",
-  followUp: null
-)
-```
+<prompt_user>
+  <question header="Quick Task">What do you want to do?</question>
+</prompt_user>
 
 Store response as `$DESCRIPTION`.
 
@@ -42,13 +38,9 @@ If `$FULL_MODE`:
 
 **Step 2: Initialize**
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init quick "$DESCRIPTION")
-```
+Call the `gsd_init_quick` tool with `{ "description": "$DESCRIPTION" }`. Parse the returned JSON for: `planner_model`, `executor_model`, `checker_model`, `verifier_model`, `commit_docs`, `next_num`, `slug`, `date`, `timestamp`, `quick_dir`, `task_dir`, `roadmap_exists`, `planning_exists`.
 
-Parse JSON for: `planner_model`, `executor_model`, `checker_model`, `verifier_model`, `commit_docs`, `next_num`, `slug`, `date`, `timestamp`, `quick_dir`, `task_dir`, `roadmap_exists`, `planning_exists`.
-
-**If `roadmap_exists` is false:** Error — Quick mode requires an active project with ROADMAP.md. Run `/gsd:new-project` first.
+**If `roadmap_exists` is false:** Error — Quick mode requires an active project with ROADMAP.md. Run `gsd_new_project` tool first.
 
 Quick tasks can run mid-phase - validation only checks ROADMAP.md exists, not phase status.
 
@@ -87,9 +79,9 @@ Store `$QUICK_DIR` for use in orchestration.
 
 **If NOT `$FULL_MODE`:** Use standard `quick` mode.
 
-```
-Task(
-  prompt="
+<delegate>
+  <agent type="gsd-planner" model="{planner_model}">Quick plan: ${DESCRIPTION}</agent>
+  <prompt>
 <planning_context>
 
 **Mode:** ${FULL_MODE ? 'quick-full' : 'quick'}
@@ -114,12 +106,8 @@ ${FULL_MODE ? '- Each task MUST have `files`, `action`, `verify`, `done` fields'
 Write plan to: ${QUICK_DIR}/${next_num}-PLAN.md
 Return: ## PLANNING COMPLETE with plan path
 </output>
-",
-  subagent_type="gsd-planner",
-  model="{planner_model}",
-  description="Quick plan: ${DESCRIPTION}"
-)
-```
+  </prompt>
+</delegate>
 
 After planner returns:
 1. Verify plan exists at `${QUICK_DIR}/${next_num}-PLAN.md`
@@ -175,14 +163,10 @@ Skip: context compliance (no CONTEXT.md), cross-plan deps (single plan), ROADMAP
 </expected_output>
 ```
 
-```
-Task(
-  prompt=checker_prompt,
-  subagent_type="gsd-plan-checker",
-  model="{checker_model}",
-  description="Check quick plan: ${DESCRIPTION}"
-)
-```
+<delegate>
+  <agent type="gsd-plan-checker" model="{checker_model}">Check quick plan: ${DESCRIPTION}</agent>
+  <prompt>${checker_prompt}</prompt>
+</delegate>
 
 **Handle checker return:**
 
@@ -219,14 +203,12 @@ Return what changed.
 </instructions>
 ```
 
-```
-Task(
-  prompt="First, read ~/.claude/agents/gsd-planner.md for your role and instructions.\n\n" + revision_prompt,
-  subagent_type="general-purpose",
-  model="{planner_model}",
-  description="Revise quick plan: ${DESCRIPTION}"
-)
-```
+<delegate>
+  <agent type="general-purpose" model="{planner_model}">Revise quick plan: ${DESCRIPTION}</agent>
+  <prompt>First, read ~/.claude/agents/gsd-planner.md for your role and instructions.
+
+${revision_prompt}</prompt>
+</delegate>
 
 After planner returns → spawn checker again, increment iteration_count.
 
@@ -242,9 +224,9 @@ Offer: 1) Force proceed, 2) Abort
 
 Spawn gsd-executor with plan reference:
 
-```
-Task(
-  prompt="
+<delegate>
+  <agent type="gsd-executor" model="{executor_model}">Execute: ${DESCRIPTION}</agent>
+  <prompt>
 Execute quick task ${next_num}.
 
 Plan: @${QUICK_DIR}/${next_num}-PLAN.md
@@ -256,19 +238,13 @@ Project state: @.planning/STATE.md
 - Create summary at: ${QUICK_DIR}/${next_num}-SUMMARY.md
 - Do NOT update ROADMAP.md (quick tasks are separate from planned phases)
 </constraints>
-",
-  subagent_type="gsd-executor",
-  model="{executor_model}",
-  description="Execute: ${DESCRIPTION}"
-)
-```
+  </prompt>
+</delegate>
 
 After executor returns:
 1. Verify summary exists at `${QUICK_DIR}/${next_num}-SUMMARY.md`
 2. Extract commit hash from executor output
 3. Report completion status
-
-**Known Claude Code bug (classifyHandoffIfNeeded):** If executor reports "failed" with error `classifyHandoffIfNeeded is not defined`, this is a Claude Code runtime bug — not a real failure. Check if summary file exists and git log shows commits. If so, treat as successful.
 
 If summary not found, error: "Executor failed to create ${next_num}-SUMMARY.md"
 
@@ -289,18 +265,14 @@ Display banner:
 ◆ Spawning verifier...
 ```
 
-```
-Task(
-  prompt="Verify quick task goal achievement.
+<delegate>
+  <agent type="gsd-verifier" model="{verifier_model}">Verify: ${DESCRIPTION}</agent>
+  <prompt>Verify quick task goal achievement.
 Task directory: ${QUICK_DIR}
 Task goal: ${DESCRIPTION}
 Plan: @${QUICK_DIR}/${next_num}-PLAN.md
-Check must_haves against actual codebase. Create VERIFICATION.md at ${QUICK_DIR}/${next_num}-VERIFICATION.md.",
-  subagent_type="gsd-verifier",
-  model="{verifier_model}",
-  description="Verify: ${DESCRIPTION}"
-)
-```
+Check must_haves against actual codebase. Create VERIFICATION.md at ${QUICK_DIR}/${next_num}-VERIFICATION.md.</prompt>
+</delegate>
 
 Read verification status:
 ```bash
@@ -382,9 +354,7 @@ Build file list:
 - `.planning/STATE.md`
 - If `$FULL_MODE` and verification file exists: `${QUICK_DIR}/${next_num}-VERIFICATION.md`
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs(quick-${next_num}): ${DESCRIPTION}" --files ${file_list}
-```
+Call the `gsd_commit_work` tool with `{ "message": "docs(quick-${next_num}): ${DESCRIPTION}", "files": "${file_list}" }`.
 
 Get final commit hash:
 ```bash
@@ -407,7 +377,7 @@ Commit: ${commit_hash}
 
 ---
 
-Ready for next task: /gsd:quick
+Ready for next task: use the `gsd_quick` tool
 ```
 
 **If NOT `$FULL_MODE`:**
@@ -423,7 +393,7 @@ Commit: ${commit_hash}
 
 ---
 
-Ready for next task: /gsd:quick
+Ready for next task: use the `gsd_quick` tool
 ```
 
 </process>
@@ -442,3 +412,4 @@ Ready for next task: /gsd:quick
 - [ ] STATE.md updated with quick task row (Status column when --full)
 - [ ] Artifacts committed
 </success_criteria>
+</output>

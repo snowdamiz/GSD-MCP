@@ -12,8 +12,8 @@ Read all files referenced by the invoking prompt's execution_context before star
 Validate argument:
 
 ```
-if $ARGUMENTS.profile not in ["quality", "balanced", "budget"]:
-  Error: Invalid profile "$ARGUMENTS.profile"
+if <arguments>.profile not in ["quality", "balanced", "budget"]:
+  Error: Invalid profile "<arguments>.profile"
   Valid profiles: quality, balanced, budget
   EXIT
 ```
@@ -22,10 +22,7 @@ if $ARGUMENTS.profile not in ["quality", "balanced", "budget"]:
 <step name="ensure_and_load_config">
 Ensure config exists and load current state:
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs config-ensure-section
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs state load)
-```
+Call the `gsd_config_ensure` tool, then load current config state.
 
 This creates `.planning/config.json` with defaults if missing and loads current config.
 </step>
@@ -36,7 +33,7 @@ Read current config from state load or directly:
 Update `model_profile` field:
 ```json
 {
-  "model_profile": "$ARGUMENTS.profile"
+  "model_profile": "<arguments>.profile"
 }
 ```
 
@@ -47,7 +44,7 @@ Write updated config back to `.planning/config.json`.
 Display confirmation with model table for selected profile:
 
 ```
-✓ Model profile set to: $ARGUMENTS.profile
+✓ Model profile set to: <arguments>.profile
 
 Agents will now use:
 
@@ -78,3 +75,4 @@ Map profile names:
 - [ ] Config updated with new model_profile
 - [ ] Confirmation displayed with model table
 </success_criteria>
+</output>

@@ -12,26 +12,18 @@ Read config.json for planning behavior settings.
 <process>
 
 <step name="init_context" priority="first">
-Load execution context (uses `init execute-phase` for full context, including file contents):
+Load execution context:
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init execute-phase "${PHASE}" --include state,config)
-```
+Call the `gsd_init_execute_phase` tool with `{ "phase": "{PHASE}", "include": "state,config" }`. Parse the returned JSON for: `executor_model`, `commit_docs`, `phase_dir`, `phase_number`, `plans`, `summaries`, `incomplete_plans`.
 
-Extract from init JSON: `executor_model`, `commit_docs`, `phase_dir`, `phase_number`, `plans`, `summaries`, `incomplete_plans`.
-
-**File contents (from --include):** `state_content`, `config_content`. Access with:
-```bash
-STATE_CONTENT=$(echo "$INIT" | jq -r '.state_content // empty')
-CONFIG_CONTENT=$(echo "$INIT" | jq -r '.config_content // empty')
-```
+**File contents (from --include):** `state_content`, `config_content`.
 
 If `.planning/` missing: error.
 </step>
 
 <step name="identify_plan">
 ```bash
-# Use plans/summaries from INIT JSON, or list files
+# Use plans/summaries from init JSON, or list files
 ls .planning/phases/XX-name/*-PLAN.md 2>/dev/null | sort
 ls .planning/phases/XX-name/*-SUMMARY.md 2>/dev/null | sort
 ```
@@ -72,7 +64,7 @@ grep -n "type=\"checkpoint" .planning/phases/XX-name/{phase}-{plan}-PLAN.md
 | Verify-only | B (segmented) | Segments between checkpoints. After none/human-verify → SUBAGENT. After decision/human-action → MAIN |
 | Decision | C (main) | Execute entirely in main context |
 
-**Pattern A:** init_agent_tracking → spawn Task(subagent_type="gsd-executor", model=executor_model) with prompt: execute plan at [path], autonomous, all tasks + SUMMARY + commit, follow deviation/auth rules, report: plan name, tasks, SUMMARY path, commit hash → track agent_id → wait → update tracking → report.
+**Pattern A:** init_agent_tracking → spawn delegate with type="gsd-executor", model=executor_model, prompt: execute plan at [path], autonomous, all tasks + SUMMARY + commit, follow deviation/auth rules, report: plan name, tasks, SUMMARY path, commit hash → track agent_id → wait → update tracking → report.
 
 **Pattern B:** Execute segment-by-segment. Autonomous segments: spawn subagent for assigned tasks only (no SUMMARY/commit). Checkpoints: main context. After all segments: aggregate, create SUMMARY, commit. See segment_execution.
 
@@ -93,7 +85,7 @@ if [ -f .planning/current-agent-id.txt ]; then
 fi
 ```
 
-If interrupted: ask user to resume (Task `resume` parameter) or start fresh.
+If interrupted: ask user to resume or start fresh.
 
 **Tracking protocol:** On spawn: write agent_id to `current-agent-id.txt`, append to agent-history.json: `{"agent_id":"[id]","task_description":"[desc]","phase":"[phase]","plan":"[plan]","segment":[num|null],"timestamp":"[ISO]","status":"spawned","completion_timestamp":null}`. On completion: status → "completed", set completion_timestamp, delete current-agent-id.txt. Prune: if entries > max_entries, remove oldest "completed" (never "spawned").
 
@@ -112,11 +104,6 @@ Pattern B only (verify-only checkpoints). Skip for A/C.
    - Check `git log --oneline --all --grep="{phase}-{plan}"` returns ≥1 commit
    - Append `## Self-Check: PASSED` or `## Self-Check: FAILED` to SUMMARY
 
-   **Known Claude Code bug (classifyHandoffIfNeeded):** If any segment agent reports "failed" with `classifyHandoffIfNeeded is not defined`, this is a Claude Code runtime bug — not a real failure. Run spot-checks; if they pass, treat as successful.
-
-
-
-
 </step>
 
 <step name="load_prompt">
@@ -127,11 +114,16 @@ This IS the execution instructions. Follow exactly. If plan references CONTEXT.m
 </step>
 
 <step name="previous_phase_check">
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs phases list --type summaries --raw
-# Extract the second-to-last summary from the JSON result
-```
-If previous SUMMARY has unresolved "Issues Encountered" or "Next Phase Readiness" blockers: AskUserQuestion(header="Previous Issues", options: "Proceed anyway" | "Address first" | "Review previous").
+Call the `gsd_list_phases` tool with `{ "type": "summaries" }`. Extract the second-to-last summary from the JSON result.
+
+If previous SUMMARY has unresolved "Issues Encountered" or "Next Phase Readiness" blockers:
+
+<prompt_user>
+  <question header="Previous Issues">Previous phase has unresolved issues. How to proceed?</question>
+  <option label="Proceed anyway">Continue despite unresolved issues</option>
+  <option label="Address first">Resolve issues before continuing</option>
+  <option label="Review previous">Review the previous phase summary</option>
+</prompt_user>
 </step>
 
 <step name="execute">
@@ -282,7 +274,7 @@ See ~/.claude/get-shit-done/references/checkpoints.md for details.
 </step>
 
 <step name="checkpoint_return_for_orchestrator">
-When spawned via Task and hitting checkpoint: return structured state (cannot interact with user directly).
+When spawned via delegate and hitting checkpoint: return structured state (cannot interact with user directly).
 
 **Required return:** 1) Completed Tasks table (hashes + files) 2) Current Task (what's blocking) 3) Checkpoint Details (user-facing content) 4) Awaiting (what's needed from user)
 
@@ -334,43 +326,25 @@ Next: more plans → "Ready for {next-plan}" | last → "Phase complete, ready f
 </step>
 
 <step name="update_current_position">
-Update STATE.md using gsd-tools:
+Update STATE.md using tools:
 
-```bash
-# Advance plan counter (handles last-plan edge case)
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs state advance-plan
+Call the `gsd_state_advance_plan` tool. This advances the plan counter (handles last-plan edge case).
 
-# Recalculate progress bar from disk state
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs state update-progress
+Call the `gsd_state_update_progress` tool. This recalculates the progress bar from disk state.
 
-# Record execution metrics
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs state record-metric \
-  --phase "${PHASE}" --plan "${PLAN}" --duration "${DURATION}" \
-  --tasks "${TASK_COUNT}" --files "${FILE_COUNT}"
-```
+Call the `gsd_state_record_metric` tool with `{ "phase": "{PHASE}", "plan": "{PLAN}", "duration": "{DURATION}", "tasks": "{TASK_COUNT}", "files": "{FILE_COUNT}" }`.
 </step>
 
 <step name="extract_decisions_and_issues">
 From SUMMARY: Extract decisions and add to STATE.md:
 
-```bash
-# Add each decision from SUMMARY key-decisions
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs state add-decision \
-  --phase "${PHASE}" --summary "${DECISION_TEXT}" --rationale "${RATIONALE}"
+Call the `gsd_state_add_decision` tool with `{ "phase": "{PHASE}", "summary": "{DECISION_TEXT}", "rationale": "{RATIONALE}" }` for each decision from SUMMARY key-decisions.
 
-# Add blockers if any found
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs state add-blocker "Blocker description"
-```
+For blockers, call the `gsd_state_patch` tool to add blocker description.
 </step>
 
 <step name="update_session_continuity">
-Update session info using gsd-tools:
-
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs state record-session \
-  --stopped-at "Completed ${PHASE}-${PLAN}-PLAN.md" \
-  --resume-file "None"
-```
+Call the `gsd_state_record_session` tool with `{ "stopped_at": "Completed ${PHASE}-${PLAN}-PLAN.md", "resume_file": "None" }`.
 
 Keep STATE.md under 150 lines.
 </step>
@@ -380,18 +354,15 @@ If SUMMARY "Issues Encountered" ≠ "None": yolo → log and continue. Interacti
 </step>
 
 <step name="update_roadmap">
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs roadmap update-plan-progress "${PHASE}"
-```
+Call the `gsd_roadmap_update_plan_progress` tool with `{ "phase": "{PHASE}" }`.
+
 Counts PLAN vs SUMMARY files on disk. Updates progress table row with correct count and status (`In Progress` or `Complete` with date).
 </step>
 
 <step name="update_requirements">
 Mark completed requirements from the PLAN.md frontmatter `requirements:` field:
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs requirements mark-complete ${REQ_IDS}
-```
+Call the `gsd_requirements_mark_complete` tool with `{ "ids": "{REQ_IDS}" }`.
 
 Extract requirement IDs from the plan's frontmatter (e.g., `requirements: [AUTH-01, AUTH-02]`). If no requirements field, skip.
 </step>
@@ -399,9 +370,7 @@ Extract requirement IDs from the plan's frontmatter (e.g., `requirements: [AUTH-
 <step name="git_commit_metadata">
 Task code already committed per-task. Commit plan metadata:
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs({phase}-{plan}): complete [plan-name] plan" --files .planning/phases/XX-name/{phase}-{plan}-SUMMARY.md .planning/STATE.md .planning/ROADMAP.md .planning/REQUIREMENTS.md
-```
+Call the `gsd_commit_work` tool with `{ "message": "docs({phase}-{plan}): complete [plan-name] plan", "files": ".planning/phases/XX-name/{phase}-{plan}-SUMMARY.md .planning/STATE.md .planning/ROADMAP.md .planning/REQUIREMENTS.md" }`.
 </step>
 
 <step name="update_codebase_map">
@@ -414,9 +383,7 @@ git diff --name-only ${FIRST_TASK}^..HEAD 2>/dev/null
 
 Update only structural changes: new src/ dir → STRUCTURE.md | deps → STACK.md | file pattern → CONVENTIONS.md | API client → INTEGRATIONS.md | config → STACK.md | renamed → update paths. Skip code-only/bugfix/content changes.
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "" --files .planning/codebase/*.md --amend
-```
+Call the `gsd_commit_work` tool with `{ "message": "", "files": ".planning/codebase/*.md", "amend": true }`.
 </step>
 
 <step name="offer_next">
@@ -429,11 +396,11 @@ ls -1 .planning/phases/[current-phase-dir]/*-SUMMARY.md 2>/dev/null | wc -l
 
 | Condition | Route | Action |
 |-----------|-------|--------|
-| summaries < plans | **A: More plans** | Find next PLAN without SUMMARY. Yolo: auto-continue. Interactive: show next plan, suggest `/gsd:execute-phase {phase}` + `/gsd:verify-work`. STOP here. |
-| summaries = plans, current < highest phase | **B: Phase done** | Show completion, suggest `/gsd:plan-phase {Z+1}` + `/gsd:verify-work {Z}` + `/gsd:discuss-phase {Z+1}` |
-| summaries = plans, current = highest phase | **C: Milestone done** | Show banner, suggest `/gsd:complete-milestone` + `/gsd:verify-work` + `/gsd:add-phase` |
+| summaries < plans | **A: More plans** | Find next PLAN without SUMMARY. Yolo: auto-continue. Interactive: show next plan, suggest calling the `gsd_execute_phase` tool + the `gsd_verify_work` tool. STOP here. |
+| summaries = plans, current < highest phase | **B: Phase done** | Show completion, suggest calling the `gsd_plan_phase` tool with `{ "phase": "{Z+1}" }` + the `gsd_verify_work` tool with `{ "phase": "{Z}" }` + the `gsd_discuss_phase` tool with `{ "phase": "{Z+1}" }` |
+| summaries = plans, current = highest phase | **C: Milestone done** | Show banner, suggest calling the `gsd_complete_milestone` tool + the `gsd_verify_work` tool + the `gsd_add_phase` tool |
 
-All routes: `/clear` first for fresh context.
+All routes: Start a fresh conversation for best results.
 </step>
 
 </process>
@@ -449,3 +416,4 @@ All routes: `/clear` first for fresh context.
 - If codebase map exists: map updated with execution changes (or skipped if no significant changes)
 - If USER-SETUP.md created: prominently surfaced in completion output
 </success_criteria>
+</output>

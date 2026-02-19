@@ -19,15 +19,11 @@ Instantly restore full project context so "Where were we?" has an immediate, com
 <step name="initialize">
 Load all context in one call:
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init resume)
-```
-
-Parse JSON for: `state_exists`, `roadmap_exists`, `project_exists`, `planning_exists`, `has_interrupted_agent`, `interrupted_agent_id`, `commit_docs`.
+Call the `gsd_init_resume` tool. Parse the returned JSON for: `state_exists`, `roadmap_exists`, `project_exists`, `planning_exists`, `has_interrupted_agent`, `interrupted_agent_id`, `commit_docs`.
 
 **If `state_exists` is true:** Proceed to load_state
 **If `state_exists` is false but `roadmap_exists` or `project_exists` is true:** Offer to reconstruct STATE.md
-**If `planning_exists` is false:** This is a new project - route to /gsd:new-project
+**If `planning_exists` is false:** This is a new project - route to the `gsd_new_project` tool
 </step>
 
 <step name="load_state">
@@ -124,7 +120,7 @@ Present complete project status to user:
     Resume with: Task tool (resume parameter with agent ID)
 
 [If pending todos exist:]
-📋 [N] pending todos — /gsd:check-todos to review
+📋 [N] pending todos — use the `gsd_check_todos` tool to review
 
 [If blockers exist:]
 ⚠️  Carried concerns:
@@ -180,11 +176,11 @@ What would you like to do?
 [Primary action based on state - e.g.:]
 1. Resume interrupted agent [if interrupted agent found]
    OR
-1. Execute phase (/gsd:execute-phase {phase})
+1. Execute phase (use the `gsd_execute_phase` tool with { "phase": "{phase}" })
    OR
-1. Discuss Phase 3 context (/gsd:discuss-phase 3) [if CONTEXT.md missing]
+1. Discuss Phase 3 context (use the `gsd_discuss_phase` tool with { "phase": "3" }) [if CONTEXT.md missing]
    OR
-1. Plan Phase 3 (/gsd:plan-phase 3) [if CONTEXT.md exists or discuss option declined]
+1. Plan Phase 3 (use the `gsd_plan_phase` tool with { "phase": "3" }) [if CONTEXT.md exists or discuss option declined]
 
 [Secondary options:]
 2. Review current phase status
@@ -215,9 +211,9 @@ Based on user selection, route to appropriate workflow:
 
   **{phase}-{plan}: [Plan Name]** — [objective from PLAN.md]
 
-  `/gsd:execute-phase {phase}`
+  Use the `gsd_execute_phase` tool with `{ "phase": "{phase}" }`
 
-  <sub>`/clear` first → fresh context window</sub>
+  <sub>Start a fresh conversation for best results</sub>
 
   ---
   ```
@@ -229,15 +225,15 @@ Based on user selection, route to appropriate workflow:
 
   **Phase [N]: [Name]** — [Goal from ROADMAP.md]
 
-  `/gsd:plan-phase [phase-number]`
+  Use the `gsd_plan_phase` tool with `{ "phase": "[phase-number]" }`
 
-  <sub>`/clear` first → fresh context window</sub>
+  <sub>Start a fresh conversation for best results</sub>
 
   ---
 
   **Also available:**
-  - `/gsd:discuss-phase [N]` — gather context first
-  - `/gsd:research-phase [N]` — investigate unknowns
+  - Use the `gsd_discuss_phase` tool with `{ "phase": "[N]" }` — gather context first
+  - Use the `gsd_research_phase` tool with `{ "phase": "[N]" }` — investigate unknowns
 
   ---
   ```
@@ -304,3 +300,4 @@ Resume is complete when:
 - [ ] User knows exactly where project stands
 - [ ] Session continuity updated
       </success_criteria>
+</output>

@@ -12,29 +12,15 @@ Read all files referenced by the invoking prompt's execution_context before star
 
 ## 1. Initialize
 
-Load all context in one call (include file contents to avoid redundant reads):
-
-```bash
-INIT_RAW=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init plan-phase "$PHASE" --include state,roadmap,requirements,context,research,verification,uat)
-# Large payloads are written to a tmpfile — output starts with @file:/path
-if [[ "$INIT_RAW" == @file:* ]]; then
-  INIT_FILE="${INIT_RAW#@file:}"
-  INIT=$(cat "$INIT_FILE")
-  rm -f "$INIT_FILE"
-else
-  INIT="$INIT_RAW"
-fi
-```
-
-Parse JSON for: `researcher_model`, `planner_model`, `checker_model`, `research_enabled`, `plan_checker_enabled`, `commit_docs`, `phase_found`, `phase_dir`, `phase_number`, `phase_name`, `phase_slug`, `padded_phase`, `has_research`, `has_context`, `has_plans`, `plan_count`, `planning_exists`, `roadmap_exists`.
+Call the `gsd_init_plan_phase` tool with `{ "phase": "{PHASE}", "include": "state,roadmap,requirements,context,research,verification,uat" }`. Parse the returned JSON for: `researcher_model`, `planner_model`, `checker_model`, `research_enabled`, `plan_checker_enabled`, `commit_docs`, `phase_found`, `phase_dir`, `phase_number`, `phase_name`, `phase_slug`, `padded_phase`, `has_research`, `has_context`, `has_plans`, `plan_count`, `planning_exists`, `roadmap_exists`.
 
 **File contents (from --include):** `state_content`, `roadmap_content`, `requirements_content`, `context_content`, `research_content`, `verification_content`, `uat_content`. These are null if files don't exist.
 
-**If `planning_exists` is false:** Error — run `/gsd:new-project` first.
+**If `planning_exists` is false:** Error — call the `gsd_new_project` tool first.
 
 ## 2. Parse and Normalize Arguments
 
-Extract from $ARGUMENTS: phase number (integer or decimal like `2.1`), flags (`--research`, `--skip-research`, `--gaps`, `--skip-verify`).
+Arguments are provided in the `<arguments>` JSON block above. Extract: phase number (integer or decimal like `2.1`), flags (`"gaps": "true"`, `"skip_research": "true"`, `"research": "true"`, `"skip_verify": "true"`).
 
 **If no phase number:** Detect next unplanned phase from roadmap.
 
@@ -47,9 +33,7 @@ mkdir -p ".planning/phases/${padded_phase}-${phase_slug}"
 
 ## 3. Validate Phase
 
-```bash
-PHASE_INFO=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs roadmap get-phase "${PHASE}")
-```
+Call the `gsd_roadmap_get_phase` tool with `{ "phase": "{PHASE}" }`.
 
 **If `found` is false:** Error with available phases. **If `found` is true:** Extract `phase_number`, `phase_name`, `goal` from JSON.
 
@@ -57,29 +41,28 @@ PHASE_INFO=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs roadmap get-phase "$
 
 Use `context_content` from init JSON (already loaded via `--include context`).
 
-**CRITICAL:** Use `context_content` from INIT — pass to researcher, planner, checker, and revision agents.
+**CRITICAL:** Use `context_content` from init — pass to researcher, planner, checker, and revision agents.
 
 If `context_content` is not null, display: `Using phase context from: ${PHASE_DIR}/*-CONTEXT.md`
 
 **If `context_content` is null (no CONTEXT.md exists):**
 
-Use AskUserQuestion:
-- header: "No context"
-- question: "No CONTEXT.md found for Phase {X}. Plans will use research and requirements only — your design preferences won't be included. Continue or capture context first?"
-- options:
-  - "Continue without context" — Plan using research + requirements only
-  - "Run discuss-phase first" — Capture design decisions before planning
+<prompt_user>
+  <question header="No context">No CONTEXT.md found for Phase {X}. Plans will use research and requirements only — your design preferences won't be included. Continue or capture context first?</question>
+  <option label="Continue without context">Plan using research + requirements only</option>
+  <option label="Run discuss-phase first">Capture design decisions before planning</option>
+</prompt_user>
 
 If "Continue without context": Proceed to step 5.
-If "Run discuss-phase first": Display `/gsd:discuss-phase {X}` and exit workflow.
+If "Run discuss-phase first": Display `gsd_discuss_phase` tool with `{ "phase": "{X}" }` and exit workflow.
 
 ## 5. Handle Research
 
-**Skip if:** `--gaps` flag, `--skip-research` flag, or `research_enabled` is false (from init) without `--research` override.
+**Skip if:** `"gaps": "true"` flag, `"skip_research": "true"` flag, or `research_enabled` is false (from init) without `"research": "true"` override.
 
-**If `has_research` is true (from init) AND no `--research` flag:** Use existing, skip to step 6.
+**If `has_research` is true (from init) AND no `"research": "true"` flag:** Use existing, skip to step 6.
 
-**If RESEARCH.md missing OR `--research` flag:**
+**If RESEARCH.md missing OR `"research": "true"` flag:**
 
 Display banner:
 ```
@@ -92,14 +75,9 @@ Display banner:
 
 ### Spawn gsd-phase-researcher
 
-```bash
-PHASE_DESC=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs roadmap get-phase "${PHASE}" | jq -r '.section')
-# Use requirements_content from INIT (already loaded via --include requirements)
-REQUIREMENTS=$(echo "$INIT" | jq -r '.requirements_content // empty' | grep -A100 "## Requirements" | head -50)
-PHASE_REQ_IDS=$(echo "$INIT" | jq -r '.roadmap_content // empty' | grep -i "Requirements:" | head -1 | sed 's/.*Requirements:\*\*\s*//' | sed 's/[\[\]]//g' | tr ',' '\n' | sed 's/^ *//;s/ *$//' | grep -v '^$' | tr '\n' ',' | sed 's/,$//')
-STATE_SNAP=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs state-snapshot)
-# Extract decisions from state-snapshot JSON: jq '.decisions[] | "\(.phase): \(.summary) - \(.rationale)"'
-```
+Call the `gsd_roadmap_get_phase` tool with `{ "phase": "{PHASE}" }` to get the phase description.
+
+Use `requirements_content` from init (already loaded via --include requirements). Extract requirements and phase requirement IDs from the init data.
 
 Research prompt:
 
@@ -110,7 +88,7 @@ Answer: "What do I need to know to PLAN this phase well?"
 </objective>
 
 <phase_context>
-IMPORTANT: If CONTEXT.md exists below, it contains user decisions from /gsd:discuss-phase.
+IMPORTANT: If CONTEXT.md exists below, it contains user decisions from the `gsd_discuss_phase` tool.
 - **Decisions** = Locked — research THESE deeply, no alternatives
 - **Claude's Discretion** = Freedom areas — research options, recommend
 - **Deferred Ideas** = Out of scope — ignore
@@ -131,12 +109,14 @@ Write to: {phase_dir}/{phase_num}-RESEARCH.md
 ```
 
 ```
-Task(
-  prompt="First, read ~/.claude/agents/gsd-phase-researcher.md for your role and instructions.\n\n" + research_prompt,
-  subagent_type="general-purpose",
-  model="{researcher_model}",
-  description="Research Phase {phase}"
-)
+<delegate>
+  <agent type="general-purpose" model="{researcher_model}">Research Phase {phase}</agent>
+  <prompt>
+    First, read ~/.claude/agents/gsd-phase-researcher.md for your role and instructions.
+
+    {research_prompt}
+  </prompt>
+</delegate>
 ```
 
 ### Handle Researcher Return
@@ -154,18 +134,9 @@ ls "${PHASE_DIR}"/*-PLAN.md 2>/dev/null
 
 ## 7. Use Context Files from INIT
 
-All file contents are already loaded via `--include` in step 1 (`@` syntax doesn't work across Task() boundaries):
+All file contents are already loaded via `--include` in step 1:
 
-```bash
-# Extract from INIT JSON (no need to re-read files)
-STATE_CONTENT=$(echo "$INIT" | jq -r '.state_content // empty')
-ROADMAP_CONTENT=$(echo "$INIT" | jq -r '.roadmap_content // empty')
-REQUIREMENTS_CONTENT=$(echo "$INIT" | jq -r '.requirements_content // empty')
-RESEARCH_CONTENT=$(echo "$INIT" | jq -r '.research_content // empty')
-VERIFICATION_CONTENT=$(echo "$INIT" | jq -r '.verification_content // empty')
-UAT_CONTENT=$(echo "$INIT" | jq -r '.uat_content // empty')
-CONTEXT_CONTENT=$(echo "$INIT" | jq -r '.context_content // empty')
-```
+Extract from init JSON (no need to re-read files): `state_content`, `roadmap_content`, `requirements_content`, `research_content`, `verification_content`, `uat_content`, `context_content`.
 
 ## 8. Spawn gsd-planner Agent
 
@@ -191,7 +162,7 @@ Planner prompt:
 **Requirements:** {requirements_content}
 
 **Phase Context:**
-IMPORTANT: If context exists below, it contains USER DECISIONS from /gsd:discuss-phase.
+IMPORTANT: If context exists below, it contains USER DECISIONS from the `gsd_discuss_phase` tool.
 - **Decisions** = LOCKED — honor exactly, do not revisit
 - **Claude's Discretion** = Freedom — make implementation choices
 - **Deferred Ideas** = Out of scope — do NOT include
@@ -203,7 +174,7 @@ IMPORTANT: If context exists below, it contains USER DECISIONS from /gsd:discuss
 </planning_context>
 
 <downstream_consumer>
-Output consumed by /gsd:execute-phase. Plans need:
+Output consumed by the `gsd_execute_phase` tool. Plans need:
 - Frontmatter (wave, depends_on, files_modified, autonomous)
 - Tasks in XML format
 - Verification criteria
@@ -221,17 +192,19 @@ Output consumed by /gsd:execute-phase. Plans need:
 ```
 
 ```
-Task(
-  prompt="First, read ~/.claude/agents/gsd-planner.md for your role and instructions.\n\n" + filled_prompt,
-  subagent_type="general-purpose",
-  model="{planner_model}",
-  description="Plan Phase {phase}"
-)
+<delegate>
+  <agent type="general-purpose" model="{planner_model}">Plan Phase {phase}</agent>
+  <prompt>
+    First, read ~/.claude/agents/gsd-planner.md for your role and instructions.
+
+    {filled_prompt}
+  </prompt>
+</delegate>
 ```
 
 ## 9. Handle Planner Return
 
-- **`## PLANNING COMPLETE`:** Display plan count. If `--skip-verify` or `plan_checker_enabled` is false (from init): skip to step 13. Otherwise: step 10.
+- **`## PLANNING COMPLETE`:** Display plan count. If `"skip_verify": "true"` or `plan_checker_enabled` is false (from init): skip to step 13. Otherwise: step 10.
 - **`## CHECKPOINT REACHED`:** Present to user, get response, spawn continuation (step 12)
 - **`## PLANNING INCONCLUSIVE`:** Show attempts, offer: Add context / Retry / Manual
 
@@ -277,12 +250,12 @@ IMPORTANT: Plans MUST honor user decisions. Flag as issue if plans contradict.
 ```
 
 ```
-Task(
-  prompt=checker_prompt,
-  subagent_type="gsd-plan-checker",
-  model="{checker_model}",
-  description="Verify Phase {phase} plans"
-)
+<delegate>
+  <agent type="gsd-plan-checker" model="{checker_model}">Verify Phase {phase} plans</agent>
+  <prompt>
+    {checker_prompt}
+  </prompt>
+</delegate>
 ```
 
 ## 11. Handle Checker Return
@@ -325,12 +298,14 @@ Return what changed.
 ```
 
 ```
-Task(
-  prompt="First, read ~/.claude/agents/gsd-planner.md for your role and instructions.\n\n" + revision_prompt,
-  subagent_type="general-purpose",
-  model="{planner_model}",
-  description="Revise Phase {phase} plans"
-)
+<delegate>
+  <agent type="general-purpose" model="{planner_model}">Revise Phase {phase} plans</agent>
+  <prompt>
+    First, read ~/.claude/agents/gsd-planner.md for your role and instructions.
+
+    {revision_prompt}
+  </prompt>
+</delegate>
 ```
 
 After planner returns -> spawn checker again (step 10), increment iteration_count.
@@ -349,13 +324,10 @@ Route to `<offer_next>` OR `auto_advance` depending on flags/config.
 
 Check for auto-advance trigger:
 
-1. Parse `--auto` flag from $ARGUMENTS
-2. Read `workflow.auto_advance` from config:
-   ```bash
-   AUTO_CFG=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs config-get workflow.auto_advance 2>/dev/null || echo "false")
-   ```
+1. Check for `"auto": "true"` in the `<arguments>` JSON block above
+2. Call the `gsd_config_get` tool with `{ "key": "workflow.auto_advance" }`. Use the returned value as `AUTO_CFG`.
 
-**If `--auto` flag present OR `AUTO_CFG` is true:**
+**If `"auto": "true"` is present in arguments OR `AUTO_CFG` is true:**
 
 Display banner:
 ```
@@ -366,13 +338,14 @@ Display banner:
 Plans ready. Spawning execute-phase...
 ```
 
-Spawn execute-phase as Task:
+Spawn execute-phase as delegate:
 ```
-Task(
-  prompt="Run /gsd:execute-phase ${PHASE} --auto",
-  subagent_type="general-purpose",
-  description="Execute Phase ${PHASE}"
-)
+<delegate>
+  <agent type="general-purpose">Execute Phase ${PHASE}</agent>
+  <prompt>
+    Call the gsd_execute_phase tool with { "phase": "${PHASE}", "auto": "true" }
+  </prompt>
+</delegate>
 ```
 
 **Handle execute-phase return:**
@@ -384,17 +357,17 @@ Task(
 
   Auto-advance pipeline finished.
 
-  Next: /gsd:discuss-phase ${NEXT_PHASE} --auto
+  Next: Call the `gsd_discuss_phase` tool with `{ "phase": "${NEXT_PHASE}", "auto": "true" }`
   ```
 - **GAPS FOUND / VERIFICATION FAILED** → Display result, stop chain:
   ```
   Auto-advance stopped: Execution needs review.
 
   Review the output above and continue manually:
-  /gsd:execute-phase ${PHASE}
+  Call the `gsd_execute_phase` tool with `{ "phase": "${PHASE}" }`
   ```
 
-**If neither `--auto` nor config enabled:**
+**If neither `"auto"` argument nor config enabled:**
 Route to `<offer_next>` (existing behavior).
 
 </process>
@@ -422,15 +395,15 @@ Verification: {Passed | Passed with override | Skipped}
 
 **Execute Phase {X}** — run all {N} plans
 
-/gsd:execute-phase {X}
+Call the `gsd_execute_phase` tool with `{ "phase": "{X}" }`
 
-<sub>/clear first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ───────────────────────────────────────────────────────────────
 
 **Also available:**
 - cat .planning/phases/{phase-dir}/*-PLAN.md — review plans
-- /gsd:plan-phase {X} --research — re-research first
+- Call the `gsd_plan_phase` tool with `{ "phase": "{X}", "research": "true" }` — re-research first
 
 ───────────────────────────────────────────────────────────────
 </offer_next>
@@ -440,7 +413,7 @@ Verification: {Passed | Passed with override | Skipped}
 - [ ] Phase validated against roadmap
 - [ ] Phase directory created if needed
 - [ ] CONTEXT.md loaded early (step 4) and passed to ALL agents
-- [ ] Research completed (unless --skip-research or --gaps or exists)
+- [ ] Research completed (unless skip_research or gaps or exists)
 - [ ] gsd-phase-researcher spawned with CONTEXT.md
 - [ ] Existing plans checked
 - [ ] gsd-planner spawned with CONTEXT.md + RESEARCH.md
@@ -450,3 +423,4 @@ Verification: {Passed | Passed with override | Skipped}
 - [ ] User sees status between agent spawns
 - [ ] User knows next steps
 </success_criteria>
+</output>

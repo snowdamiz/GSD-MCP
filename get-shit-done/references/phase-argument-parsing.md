@@ -1,23 +1,18 @@
 # Phase Argument Parsing
 
-Parse and normalize phase arguments for commands that operate on phases.
+Parse and normalize phase arguments for tools that operate on phases.
 
 ## Extraction
 
-From `$ARGUMENTS`:
-- Extract phase number (first numeric argument)
-- Extract flags (prefixed with `--`)
-- Remaining text is description (for insert/add commands)
+From the `<arguments>` JSON block:
+- Extract phase number (from the `phase` field)
+- Extract flags (additional fields in the JSON)
+- Remaining text is description (for insert/add tools)
 
-## Using gsd-tools
+## Using the gsd_find_phase Tool
 
-The `find-phase` command handles normalization and validation in one step:
+Call the `gsd_find_phase` tool to handle normalization and validation in one step. Pass the phase number and it returns JSON with:
 
-```bash
-PHASE_INFO=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs find-phase "${PHASE}")
-```
-
-Returns JSON with:
 - `found`: true/false
 - `directory`: Full path to phase directory
 - `phase_number`: Normalized number (e.g., "06", "06.1")
@@ -29,33 +24,13 @@ Returns JSON with:
 
 Zero-pad integer phases to 2 digits. Preserve decimal suffixes.
 
-```bash
-# Normalize phase number
-if [[ "$PHASE" =~ ^[0-9]+$ ]]; then
-  # Integer: 8 → 08
-  PHASE=$(printf "%02d" "$PHASE")
-elif [[ "$PHASE" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
-  # Decimal: 2.1 → 02.1
-  PHASE=$(printf "%02d.%s" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}")
-fi
-```
+- Integer: `8` becomes `08`
+- Decimal: `2.1` becomes `02.1`
 
 ## Validation
 
-Use `roadmap get-phase` to validate phase exists:
-
-```bash
-PHASE_CHECK=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs roadmap get-phase "${PHASE}")
-if [ "$(echo "$PHASE_CHECK" | jq -r '.found')" = "false" ]; then
-  echo "ERROR: Phase ${PHASE} not found in roadmap"
-  exit 1
-fi
-```
+Call the `gsd_roadmap_get_phase` tool with the phase number to validate the phase exists. If the result has `found: false`, the phase does not exist in the roadmap.
 
 ## Directory Lookup
 
-Use `find-phase` for directory lookup:
-
-```bash
-PHASE_DIR=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs find-phase "${PHASE}" --raw)
-```
+Call the `gsd_find_phase` tool with the phase number to get the directory path from the result.

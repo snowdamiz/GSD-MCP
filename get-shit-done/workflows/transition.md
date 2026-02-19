@@ -63,8 +63,8 @@ cat .planning/config.json 2>/dev/null
 <if mode="yolo">
 
 ```
-⚡ Auto-approved: Transition Phase [X] → Phase [X+1]
-Phase [X] complete — all [Y] plans finished.
+Auto-approved: Transition Phase [X] -> Phase [X+1]
+Phase [X] complete -- all [Y] plans finished.
 
 Proceeding to mark done and advance...
 ```
@@ -75,7 +75,7 @@ Proceed directly to cleanup_handoff step.
 
 <if mode="interactive" OR="custom with gates.confirm_transition true">
 
-Ask: "Phase [X] complete — all [Y] plans finished. Ready to mark done and move to Phase [X+1]?"
+Ask: "Phase [X] complete -- all [Y] plans finished. Ready to mark done and move to Phase [X+1]?"
 
 Wait for confirmation before proceeding.
 
@@ -84,17 +84,17 @@ Wait for confirmation before proceeding.
 **If plans incomplete:**
 
 **SAFETY RAIL: always_confirm_destructive applies here.**
-Skipping incomplete plans is destructive — ALWAYS prompt regardless of mode.
+Skipping incomplete plans is destructive -- ALWAYS prompt regardless of mode.
 
 Present:
 
 ```
 Phase [X] has incomplete plans:
-- {phase}-01-SUMMARY.md ✓ Complete
-- {phase}-02-SUMMARY.md ✗ Missing
-- {phase}-03-SUMMARY.md ✗ Missing
+- {phase}-01-SUMMARY.md - Complete
+- {phase}-02-SUMMARY.md - Missing
+- {phase}-03-SUMMARY.md - Missing
 
-⚠️ Safety rail: Skipping plans requires confirmation (destructive action)
+Safety rail: Skipping plans requires confirmation (destructive action)
 
 Options:
 1. Continue current phase (execute remaining plans)
@@ -114,7 +114,7 @@ Check for lingering handoffs:
 ls .planning/phases/XX-current/.continue-here*.md 2>/dev/null
 ```
 
-If found, delete them — phase is complete, handoffs are stale.
+If found, delete them -- phase is complete, handoffs are stale.
 
 </step>
 
@@ -122,18 +122,14 @@ If found, delete them — phase is complete, handoffs are stale.
 
 **Delegate ROADMAP.md and STATE.md updates to gsd-tools:**
 
-```bash
-TRANSITION=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs phase complete "${current_phase}")
-```
+Call the `gsd_complete_phase` tool with `{ "phase": "{current_phase}" }`. Parse the returned JSON for: `completed_phase`, `plans_executed`, `next_phase`, `next_phase_name`, `is_last_phase`.
 
-The CLI handles:
+The tool handles:
 - Marking the phase checkbox as `[x]` complete with today's date
 - Updating plan count to final (e.g., "3/3 plans complete")
-- Updating the Progress table (Status → Complete, adding date)
-- Advancing STATE.md to next phase (Current Phase, Status → Ready to plan, Current Plan → Not started)
+- Updating the Progress table (Status -> Complete, adding date)
+- Advancing STATE.md to next phase (Current Phase, Status -> Ready to plan, Current Plan -> Not started)
 - Detecting if this is the last phase in the milestone
-
-Extract from result: `completed_phase`, `plans_executed`, `next_phase`, `next_phase_name`, `is_last_phase`.
 
 </step>
 
@@ -158,11 +154,11 @@ cat .planning/phases/XX-current/*-SUMMARY.md
 
 1. **Requirements validated?**
    - Any Active requirements shipped in this phase?
-   - Move to Validated with phase reference: `- ✓ [Requirement] — Phase X`
+   - Move to Validated with phase reference: `- [Requirement] -- Phase X`
 
 2. **Requirements invalidated?**
    - Any Active requirements discovered to be unnecessary or wrong?
-   - Move to Out of Scope with reason: `- [Requirement] — [why invalidated]`
+   - Move to Out of Scope with reason: `- [Requirement] -- [why invalidated]`
 
 3. **Requirements emerged?**
    - Any new requirements discovered during building?
@@ -198,7 +194,7 @@ Before:
 
 ### Out of Scope
 
-- OAuth2 — complexity not needed for v1
+- OAuth2 -- complexity not needed for v1
 ```
 
 After (Phase 2 shipped JWT auth, discovered rate limiting needed):
@@ -206,7 +202,7 @@ After (Phase 2 shipped JWT auth, discovered rate limiting needed):
 ```markdown
 ### Validated
 
-- ✓ JWT authentication — Phase 2
+- JWT authentication -- Phase 2
 
 ### Active
 
@@ -216,7 +212,7 @@ After (Phase 2 shipped JWT auth, discovered rate limiting needed):
 
 ### Out of Scope
 
-- OAuth2 — complexity not needed for v1
+- OAuth2 -- complexity not needed for v1
 ```
 
 **Step complete when:**
@@ -233,15 +229,9 @@ After (Phase 2 shipped JWT auth, discovered rate limiting needed):
 
 <step name="update_current_position_after_transition">
 
-**Note:** Basic position updates (Current Phase, Status, Current Plan, Last Activity) were already handled by `gsd-tools phase complete` in the update_roadmap_and_state step.
+**Note:** Basic position updates (Current Phase, Status, Current Plan, Last Activity) were already handled by `gsd_complete_phase` tool in the update_roadmap_and_state step.
 
-Verify the updates are correct by reading STATE.md. If the progress bar needs updating, use:
-
-```bash
-PROGRESS=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs progress bar --raw)
-```
-
-Update the progress bar line in STATE.md with the result.
+Verify the updates are correct by reading STATE.md. If the progress bar needs updating, call the `gsd_init_progress` tool with `{ "include": "state" }` and use the progress bar from the result.
 
 **Step complete when:**
 
@@ -292,8 +282,8 @@ Before:
 ```markdown
 ### Blockers/Concerns
 
-- ⚠️ [Phase 1] Database schema not indexed for common queries
-- ⚠️ [Phase 2] WebSocket reconnection behavior on flaky networks unknown
+- [Phase 1] Database schema not indexed for common queries
+- [Phase 2] WebSocket reconnection behavior on flaky networks unknown
 ```
 
 After (if database indexing was addressed in Phase 2):
@@ -301,7 +291,7 @@ After (if database indexing was addressed in Phase 2):
 ```markdown
 ### Blockers/Concerns
 
-- ⚠️ [Phase 2] WebSocket reconnection behavior on flaky networks unknown
+- [Phase 2] WebSocket reconnection behavior on flaky networks unknown
 ```
 
 **Step complete when:**
@@ -337,20 +327,15 @@ Resume file: None
 
 **MANDATORY: Verify milestone status before presenting next steps.**
 
-**Use the transition result from `gsd-tools phase complete`:**
+**Use the transition result from `gsd_complete_phase` tool:**
 
 The `is_last_phase` field from the phase complete result tells you directly:
-- `is_last_phase: false` → More phases remain → Go to **Route A**
-- `is_last_phase: true` → Milestone complete → Go to **Route B**
+- `is_last_phase: false` -> More phases remain -> Go to **Route A**
+- `is_last_phase: true` -> Milestone complete -> Go to **Route B**
 
 The `next_phase` and `next_phase_name` fields give you the next phase details.
 
-If you need additional context, use:
-```bash
-ROADMAP=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs roadmap analyze)
-```
-
-This returns all phases with goals, disk status, and completion info.
+If you need additional context, call the `gsd_roadmap_get_phase` tool to get phase details. This returns all phases with goals, disk status, and completion info.
 
 ---
 
@@ -373,24 +358,24 @@ ls .planning/phases/*[X+1]*/*-CONTEXT.md 2>/dev/null
 ```
 Phase [X] marked complete.
 
-Next: Phase [X+1] — [Name]
+Next: Phase [X+1] -- [Name]
 
-⚡ Auto-continuing: Plan Phase [X+1] in detail
+Auto-continuing: Plan Phase [X+1] in detail
 ```
 
-Exit skill and invoke SlashCommand("/gsd:plan-phase [X+1] --auto")
+Exit and invoke the `gsd_plan_phase` tool with the next phase number.
 
 **If CONTEXT.md does NOT exist:**
 
 ```
 Phase [X] marked complete.
 
-Next: Phase [X+1] — [Name]
+Next: Phase [X+1] -- [Name]
 
-⚡ Auto-continuing: Discuss Phase [X+1] first
+Auto-continuing: Discuss Phase [X+1] first
 ```
 
-Exit skill and invoke SlashCommand("/gsd:discuss-phase [X+1] --auto")
+Exit and invoke the `gsd_discuss_phase` tool with the next phase number.
 
 </if>
 
@@ -399,23 +384,23 @@ Exit skill and invoke SlashCommand("/gsd:discuss-phase [X+1] --auto")
 **If CONTEXT.md does NOT exist:**
 
 ```
-## ✓ Phase [X] Complete
+## Phase [X] Complete
 
 ---
 
-## ▶ Next Up
+## Next Up
 
-**Phase [X+1]: [Name]** — [Goal from ROADMAP.md]
+**Phase [X+1]: [Name]** -- [Goal from ROADMAP.md]
 
-`/gsd:discuss-phase [X+1]` — gather context and clarify approach
+Use the `gsd_discuss_phase` tool -- gather context and clarify approach
 
-<sub>`/clear` first → fresh context window</sub>
+Start a fresh conversation for best results
 
 ---
 
 **Also available:**
-- `/gsd:plan-phase [X+1]` — skip discussion, plan directly
-- `/gsd:research-phase [X+1]` — investigate unknowns
+- `gsd_plan_phase` tool -- skip discussion, plan directly
+- `gsd_research_phase` tool -- investigate unknowns
 
 ---
 ```
@@ -423,24 +408,24 @@ Exit skill and invoke SlashCommand("/gsd:discuss-phase [X+1] --auto")
 **If CONTEXT.md exists:**
 
 ```
-## ✓ Phase [X] Complete
+## Phase [X] Complete
 
 ---
 
-## ▶ Next Up
+## Next Up
 
-**Phase [X+1]: [Name]** — [Goal from ROADMAP.md]
-<sub>✓ Context gathered, ready to plan</sub>
+**Phase [X+1]: [Name]** -- [Goal from ROADMAP.md]
+Context gathered, ready to plan
 
-`/gsd:plan-phase [X+1]`
+Use the `gsd_plan_phase` tool
 
-<sub>`/clear` first → fresh context window</sub>
+Start a fresh conversation for best results
 
 ---
 
 **Also available:**
-- `/gsd:discuss-phase [X+1]` — revisit context
-- `/gsd:research-phase [X+1]` — investigate unknowns
+- `gsd_discuss_phase` tool -- revisit context
+- `gsd_research_phase` tool -- investigate unknowns
 
 ---
 ```
@@ -451,41 +436,40 @@ Exit skill and invoke SlashCommand("/gsd:discuss-phase [X+1] --auto")
 
 **Route B: Milestone complete (all phases done)**
 
-**Clear auto-advance** — milestone boundary is the natural stopping point:
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs config-set workflow.auto_advance false
-```
+**Clear auto-advance** -- milestone boundary is the natural stopping point:
+
+Call the `gsd_config_set` tool with `{ "key": "workflow.auto_advance", "value": false }`.
 
 <if mode="yolo">
 
 ```
 Phase {X} marked complete.
 
-🎉 Milestone {version} is 100% complete — all {N} phases finished!
+Milestone {version} is 100% complete -- all {N} phases finished!
 
-⚡ Auto-continuing: Complete milestone and archive
+Auto-continuing: Complete milestone and archive
 ```
 
-Exit skill and invoke SlashCommand("/gsd:complete-milestone {version}")
+Exit and invoke the `gsd_complete_milestone` tool with the milestone version.
 
 </if>
 
 <if mode="interactive" OR="custom with gates.confirm_transition true">
 
 ```
-## ✓ Phase {X}: {Phase Name} Complete
+## Phase {X}: {Phase Name} Complete
 
-🎉 Milestone {version} is 100% complete — all {N} phases finished!
+Milestone {version} is 100% complete -- all {N} phases finished!
 
 ---
 
-## ▶ Next Up
+## Next Up
 
-**Complete Milestone {version}** — archive and prepare for next
+**Complete Milestone {version}** -- archive and prepare for next
 
-`/gsd:complete-milestone {version}`
+Use the `gsd_complete_milestone` tool
 
-<sub>`/clear` first → fresh context window</sub>
+Start a fresh conversation for best results
 
 ---
 
@@ -502,7 +486,7 @@ Exit skill and invoke SlashCommand("/gsd:complete-milestone {version}")
 </process>
 
 <implicit_tracking>
-Progress tracking is IMPLICIT: planning phase N implies phases 1-(N-1) complete. No separate progress step—forward motion IS progress.
+Progress tracking is IMPLICIT: planning phase N implies phases 1-(N-1) complete. No separate progress step--forward motion IS progress.
 </implicit_tracking>
 
 <partial_completion>
@@ -520,7 +504,7 @@ Options:
 3. Stay and finish current phase
 ```
 
-Respect user judgment — they know if work matters.
+Respect user judgment -- they know if work matters.
 
 **If marking complete with incomplete plans:**
 
@@ -542,3 +526,4 @@ Transition is complete when:
 - [ ] User knows next steps
 
 </success_criteria>
+</output>

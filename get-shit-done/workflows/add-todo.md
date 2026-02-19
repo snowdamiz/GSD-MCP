@@ -1,5 +1,5 @@
 <purpose>
-Capture an idea, task, or issue that surfaces during a GSD session as a structured todo for later work. Enables "thought → capture → continue" flow without losing context.
+Capture an idea, task, or issue that surfaces during a GSD session as a structured todo for later work. Enables "thought -> capture -> continue" flow without losing context.
 </purpose>
 
 <required_reading>
@@ -11,11 +11,7 @@ Read all files referenced by the invoking prompt's execution_context before star
 <step name="init_context">
 Load todo context:
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init todos)
-```
-
-Extract from init JSON: `commit_docs`, `date`, `timestamp`, `todo_count`, `todos`, `pending_dir`, `todos_dir_exists`.
+Call the `gsd_init_todos` tool. Extract from the returned JSON: `commit_docs`, `date`, `timestamp`, `todo_count`, `todos`, `pending_dir`, `todos_dir_exists`.
 
 Ensure directories exist:
 ```bash
@@ -27,7 +23,7 @@ Note existing areas from the todos array for consistency in infer_area step.
 
 <step name="extract_content">
 **With arguments:** Use as the title/focus.
-- `/gsd:add-todo Add auth token refresh` → title = "Add auth token refresh"
+- `gsd_add_todo` tool with "Add auth token refresh" -> title = "Add auth token refresh"
 
 **Without arguments:** Analyze recent conversation to extract:
 - The specific problem, idea, or task discussed
@@ -69,22 +65,22 @@ If potential duplicate found:
 1. Read the existing todo
 2. Compare scope
 
-If overlapping, use AskUserQuestion:
-- header: "Duplicate?"
-- question: "Similar todo exists: [title]. What would you like to do?"
-- options:
-  - "Skip" — keep existing todo
-  - "Replace" — update existing with new context
-  - "Add anyway" — create as separate todo
+If overlapping:
+
+<prompt_user>
+  <question header="Duplicate?">Similar todo exists: [title]. What would you like to do?</question>
+  <option label="Skip">Keep existing todo</option>
+  <option label="Replace">Update existing with new context</option>
+  <option label="Add anyway">Create as separate todo</option>
+</prompt_user>
 </step>
 
 <step name="create_file">
 Use values from init context: `timestamp` and `date` are already available.
 
 Generate slug for the title:
-```bash
-slug=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs generate-slug "$title" --raw)
-```
+
+Call the `gsd_generate_slug` tool with `{ "text": "$title" }` to get the slug.
 
 Write to `.planning/todos/pending/${date}-${slug}.md`:
 
@@ -110,16 +106,14 @@ files:
 <step name="update_state">
 If `.planning/STATE.md` exists:
 
-1. Use `todo_count` from init context (or re-run `init todos` if count changed)
+1. Use `todo_count` from init context (or re-run `gsd_init_todos` tool if count changed)
 2. Update "### Pending Todos" under "## Accumulated Context"
 </step>
 
 <step name="git_commit">
 Commit the todo and any updated state:
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs: capture todo - [title]" --files .planning/todos/pending/[filename] .planning/STATE.md
-```
+Call the `gsd_commit_work` tool with `{ "message": "docs: capture todo - [title]", "files": ".planning/todos/pending/[filename] .planning/STATE.md" }`.
 
 Tool respects `commit_docs` config and gitignore automatically.
 
@@ -140,7 +134,7 @@ Would you like to:
 
 1. Continue with current work
 2. Add another todo
-3. View all todos (/gsd:check-todos)
+3. View all todos (use the `gsd_check_todos` tool)
 ```
 </step>
 
@@ -155,3 +149,4 @@ Would you like to:
 - [ ] STATE.md updated if exists
 - [ ] Todo and state committed to git
 </success_criteria>
+</output>

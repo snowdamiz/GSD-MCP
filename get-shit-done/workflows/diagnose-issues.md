@@ -77,13 +77,10 @@ This runs in parallel - all gaps investigated simultaneously.
 
 For each gap, fill the debug-subagent-prompt template and spawn:
 
-```
-Task(
-  prompt=filled_debug_subagent_prompt,
-  subagent_type="general-purpose",
-  description="Debug: {truth_short}"
-)
-```
+<delegate>
+  <agent type="general-purpose" model="{debugger_model}">Debug: {truth_short}</agent>
+  <prompt>${filled_debug_subagent_prompt}</prompt>
+</delegate>
 
 **All agents spawn in single message** (parallel execution).
 
@@ -157,9 +154,8 @@ For each gap in the Gaps section, add artifacts and missing fields:
 Update status in frontmatter to "diagnosed".
 
 Commit the updated UAT.md:
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs({phase_num}): add root causes from diagnosis" --files ".planning/phases/XX-name/{phase_num}-UAT.md"
-```
+
+Call the `gsd_commit_work` tool with `{ "message": "docs({phase_num}): add root causes from diagnosis", "files": ".planning/phases/XX-name/{phase_num}-UAT.md" }`.
 </step>
 
 <step name="report_results">
@@ -201,7 +197,7 @@ Agents only diagnose—plan-phase --gaps handles fixes (no fix application).
 
 **Agent times out:**
 - Check DEBUG-{slug}.md for partial progress
-- Can resume with /gsd:debug
+- Can resume with the `gsd_debug` tool
 
 **All agents fail:**
 - Something systemic (permissions, git, etc.)
@@ -217,3 +213,4 @@ Agents only diagnose—plan-phase --gaps handles fixes (no fix application).
 - [ ] Debug sessions saved to ${DEBUG_DIR}/
 - [ ] Hand off to verify-work for automatic planning
 </success_criteria>
+</output>

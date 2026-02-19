@@ -2,7 +2,7 @@
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
 const { TOOLS } = require('./tools.js');
-const { RESOURCES, handleDynamicResource } = require('./resources.js');
+const { RESOURCES } = require('./resources.js');
 const { PROMPTS, getPrompt } = require('./prompts.js');
 
 const server = new McpServer({
@@ -12,7 +12,10 @@ const server = new McpServer({
 
 // Register Tools
 for (const tool of TOOLS) {
-  server.tool(tool.name, tool.description, tool.inputSchema, async (args) => {
+  server.registerTool(tool.name, {
+    description: tool.description,
+    inputSchema: tool.inputSchema,
+  }, async (args, extra) => {
     return tool.handler(args, process.cwd());
   });
 }
@@ -23,14 +26,6 @@ for (const resource of RESOURCES) {
     return resource.handler(uri, process.cwd());
   });
 }
-
-// Register Dynamic Resource Handler?
-// The SDK doesn't expose a clean way to register regex patterns in the simplified McpServer class.
-// We'd typically use server.server.setRequestHandler(ReadResourceRequestSchema, ...) for low level control.
-// However, looking at the SDK, `server.resource` helper takes a specific URI.
-// For dynamic resources, we might need to rely on the client listing resources or just implement it if the SDK supports patterns.
-// As of now, I'll stick to static resources for simplicity or assume future SDK features.
-// If needed, I would use the lower-level `server.server` object.
 
 // Register Prompts
 for (const prompt of PROMPTS) {

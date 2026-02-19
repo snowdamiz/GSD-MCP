@@ -98,7 +98,7 @@ skipped: [N]
 **Gaps:**
 - APPEND only when issue found (YAML format)
 - After diagnosis: fill `root_cause`, `artifacts`, `missing`, `debug_session`
-- This section feeds directly into /gsd:plan-phase --gaps
+- This section feeds directly into the `gsd_plan_phase` tool with gaps mode
 
 </section_rules>
 
@@ -112,7 +112,7 @@ skipped: [N]
 4. UAT.md Gaps section updated with diagnosis:
    - Each gap gets `root_cause`, `artifacts`, `missing`, `debug_session` filled
 5. status → "diagnosed"
-6. Ready for /gsd:plan-phase --gaps with root causes
+6. Ready for the `gsd_plan_phase` tool with gaps mode and root causes
 
 **After diagnosis:**
 ```yaml
@@ -136,7 +136,7 @@ skipped: [N]
 
 <lifecycle>
 
-**Creation:** When /gsd:verify-work starts new session
+**Creation:** When the `gsd_verify_work` tool starts new session
 - Extract tests from SUMMARY.md files
 - Set status to "testing"
 - Current Test points to test 1

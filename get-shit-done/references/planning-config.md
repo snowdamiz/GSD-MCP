@@ -36,30 +36,19 @@ Configuration options for `.planning/` directory behavior.
 - User must add `.planning/` to `.gitignore`
 - Useful for: OSS contributions, client projects, keeping planning private
 
-**Using gsd-tools.cjs (preferred):**
+**Using tools (preferred):**
 
-```bash
-# Commit with automatic commit_docs + gitignore checks:
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs: update state" --files .planning/STATE.md
+Call the `gsd_commit_work` tool with the commit message and files list. It automatically checks `commit_docs` and gitignore status.
 
-# Load config via state load (returns JSON):
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs state load)
-# commit_docs is available in the JSON output
+Call the `gsd_get_state` tool to load project state (returns JSON). The `commit_docs` value is available in the JSON output.
 
-# Or use init commands which include commit_docs:
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init execute-phase "1")
-# commit_docs is included in all init command outputs
-```
+Call the `gsd_init_execute_phase` tool with the phase number. The `commit_docs` value is included in all init tool outputs.
 
 **Auto-detection:** If `.planning/` is gitignored, `commit_docs` is automatically `false` regardless of config.json. This prevents git errors when users have `.planning/` in `.gitignore`.
 
-**Commit via CLI (handles checks automatically):**
+**Commit via tool (handles checks automatically):**
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs: update state" --files .planning/STATE.md
-```
-
-The CLI checks `commit_docs` config and gitignore status internally — no manual conditionals needed.
+Call the `gsd_commit_work` tool with the commit message and files. It checks `commit_docs` config and gitignore status internally -- no manual conditionals needed.
 
 </commit_docs_behavior>
 
@@ -142,17 +131,9 @@ To use uncommitted mode:
 
 **Checking the config:**
 
-Use `init execute-phase` which returns all config as JSON:
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init execute-phase "1")
-# JSON output includes: branching_strategy, phase_branch_template, milestone_branch_template
-```
+Call the `gsd_init_execute_phase` tool which returns all config as JSON, including: `branching_strategy`, `phase_branch_template`, `milestone_branch_template`.
 
-Or use `state load` for the config values:
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs state load)
-# Parse branching_strategy, phase_branch_template, milestone_branch_template from JSON
-```
+Or call the `gsd_get_state` tool for the config values. Parse `branching_strategy`, `phase_branch_template`, `milestone_branch_template` from JSON.
 
 **Branch creation:**
 
@@ -181,7 +162,7 @@ fi
 | Delete without merging | `git branch -D` | Discard branch work |
 | Keep branches | (none) | Manual handling later |
 
-Squash merge is recommended — keeps main branch history clean while preserving the full development history in the branch (until deleted).
+Squash merge is recommended -- keeps main branch history clean while preserving the full development history in the branch (until deleted).
 
 **Use cases:**
 

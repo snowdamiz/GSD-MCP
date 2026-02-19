@@ -1,24 +1,20 @@
 # Git Planning Commit
 
-Commit planning artifacts using the gsd-tools CLI, which automatically checks `commit_docs` config and gitignore status.
+Commit planning artifacts using the `gsd_commit_work` tool, which automatically checks `commit_docs` config and gitignore status.
 
-## Commit via CLI
+## Commit via Tool
 
-Always use `gsd-tools.cjs commit` for `.planning/` files — it handles `commit_docs` and gitignore checks automatically:
+Always call the `gsd_commit_work` tool for `.planning/` files -- it handles `commit_docs` and gitignore checks automatically.
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs({scope}): {description}" --files .planning/STATE.md .planning/ROADMAP.md
-```
+Pass the commit message and files list:
+- `message`: `"docs({scope}): {description}"`
+- `files`: list of files to commit (e.g., `.planning/STATE.md .planning/ROADMAP.md`)
 
-The CLI will return `skipped` (with reason) if `commit_docs` is `false` or `.planning/` is gitignored. No manual conditional checks needed.
+The tool will return `skipped` (with reason) if `commit_docs` is `false` or `.planning/` is gitignored. No manual conditional checks needed.
 
 ## Amend previous commit
 
-To fold `.planning/` file changes into the previous commit:
-
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "" --files .planning/codebase/*.md --amend
-```
+To fold `.planning/` file changes into the previous commit, call the `gsd_commit_work` tool with the `--amend` flag and the files list.
 
 ## Commit Message Patterns
 

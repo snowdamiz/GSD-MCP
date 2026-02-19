@@ -66,9 +66,9 @@ Use these as inspiration, not a checklist. Pick what's relevant to the thread.
 
 </question_types>
 
-<using_askuserquestion>
+<using_prompt_user>
 
-Use AskUserQuestion to help users think by presenting concrete options to react to.
+Use `<prompt_user>` to help users think by presenting concrete options to react to.
 
 **Good options:**
 - Interpretations of what they might mean
@@ -84,21 +84,39 @@ Use AskUserQuestion to help users think by presenting concrete options to react 
 **Example — vague answer:**
 User says "it should be fast"
 
-- header: "Fast"
-- question: "Fast how?"
-- options: ["Sub-second response", "Handles large datasets", "Quick to build", "Let me explain"]
+```xml
+<prompt_user>
+  <header>Fast</header>
+  <question>Fast how?</question>
+  <options>
+    <option>Sub-second response</option>
+    <option>Handles large datasets</option>
+    <option>Quick to build</option>
+    <option>Let me explain</option>
+  </options>
+</prompt_user>
+```
 
 **Example — following a thread:**
 User mentions "frustrated with current tools"
 
-- header: "Frustration"
-- question: "What specifically frustrates you?"
-- options: ["Too many clicks", "Missing features", "Unreliable", "Let me explain"]
+```xml
+<prompt_user>
+  <header>Frustration</header>
+  <question>What specifically frustrates you?</question>
+  <options>
+    <option>Too many clicks</option>
+    <option>Missing features</option>
+    <option>Unreliable</option>
+    <option>Let me explain</option>
+  </options>
+</prompt_user>
+```
 
 **Tip for users — modifying an option:**
 Users who want a slightly modified version of an option can select "Other" and reference the option by number: `#1 but for finger joints only` or `#2 with pagination disabled`. This avoids retyping the full option text.
 
-</using_askuserquestion>
+</using_prompt_user>
 
 <context_checklist>
 
@@ -117,11 +135,16 @@ Four things. If they volunteer more, capture it.
 
 When you could write a clear PROJECT.md, offer to proceed:
 
-- header: "Ready?"
-- question: "I think I understand what you're after. Ready to create PROJECT.md?"
-- options:
-  - "Create PROJECT.md" — Let's move forward
-  - "Keep exploring" — I want to share more / ask me more
+```xml
+<prompt_user>
+  <header>Ready?</header>
+  <question>I think I understand what you're after. Ready to create PROJECT.md?</question>
+  <options>
+    <option>Create PROJECT.md — Let's move forward</option>
+    <option>Keep exploring — I want to share more / ask me more</option>
+  </options>
+</prompt_user>
+```
 
 If "Keep exploring" — ask what they want to add or identify gaps and probe naturally.
 

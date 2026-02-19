@@ -130,14 +130,14 @@ Your custom files in other locations are preserved:
 - Custom hooks ✓
 - Your CLAUDE.md files ✓
 
-If you've modified any GSD files directly, they'll be automatically backed up to `gsd-local-patches/` and can be reapplied with `/gsd:reapply-patches` after the update.
+If you've modified any GSD files directly, they'll be automatically backed up to `gsd-local-patches/` and can be reapplied with the `gsd_reapply_patches` tool after the update.
 ```
 
-Use AskUserQuestion:
-- Question: "Proceed with update?"
-- Options:
-  - "Yes, update now"
-  - "No, cancel"
+<prompt_user>
+  <question header="Update">Proceed with update?</question>
+  <option label="Yes, update now">Install the latest version</option>
+  <option label="No, cancel">Do not update</option>
+</prompt_user>
 
 **If user cancels:** Exit.
 </step>
@@ -195,7 +195,7 @@ Check for gsd-local-patches/backup-meta.json in the config directory.
 
 ```
 Local patches were backed up before the update.
-Run /gsd:reapply-patches to merge your modifications into the new version.
+Run the `gsd_reapply_patches` tool to merge your modifications into the new version.
 ```
 
 **If no patches:** Continue normally.
@@ -212,3 +212,4 @@ Run /gsd:reapply-patches to merge your modifications into the new version.
 - [ ] Update executed successfully
 - [ ] Restart reminder shown
 </success_criteria>
+</output>

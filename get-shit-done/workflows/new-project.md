@@ -9,7 +9,7 @@ Read all files referenced by the invoking prompt's execution_context before star
 <auto_mode>
 ## Auto Mode Detection
 
-Check if `--auto` flag is present in $ARGUMENTS.
+Check if `"auto": "true"` is present in the `<arguments>` JSON block above.
 
 **If auto mode:**
 - Skip brownfield mapping offer (assume greenfield)
@@ -23,7 +23,7 @@ Check if `--auto` flag is present in $ARGUMENTS.
 
 **Document requirement:**
 Auto mode requires an idea document — either:
-- File reference: `/gsd:new-project --auto @prd.md`
+- File reference: call the `gsd_new_project` tool with `{ "auto": "true", "file": "prd.md" }`
 - Pasted/written text in the prompt
 
 If no document content provided, error:
@@ -32,8 +32,8 @@ If no document content provided, error:
 Error: --auto requires an idea document.
 
 Usage:
-  /gsd:new-project --auto @your-idea.md
-  /gsd:new-project --auto [paste or write your idea here]
+  Call the `gsd_new_project` tool with { "auto": "true", "file": "your-idea.md" }
+  Call the `gsd_new_project` tool with { "auto": "true" } and paste or write your idea
 
 The document should describe what you want to build.
 ```
@@ -45,13 +45,9 @@ The document should describe what you want to build.
 
 **MANDATORY FIRST STEP — Execute these checks before ANY user interaction:**
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init new-project)
-```
+Call the `gsd_init_project` tool. Parse the returned JSON for: `researcher_model`, `synthesizer_model`, `roadmapper_model`, `commit_docs`, `project_exists`, `has_codebase_map`, `planning_exists`, `has_existing_code`, `has_package_file`, `is_brownfield`, `needs_codebase_map`, `has_git`.
 
-Parse JSON for: `researcher_model`, `synthesizer_model`, `roadmapper_model`, `commit_docs`, `project_exists`, `has_codebase_map`, `planning_exists`, `has_existing_code`, `has_package_file`, `is_brownfield`, `needs_codebase_map`, `has_git`.
-
-**If `project_exists` is true:** Error — project already initialized. Use `/gsd:progress`.
+**If `project_exists` is true:** Error — project already initialized. Use the `gsd_progress` tool.
 
 **If `has_git` is false:** Initialize git:
 ```bash
@@ -64,16 +60,15 @@ git init
 
 **If `needs_codebase_map` is true** (from init — existing code detected but no codebase map):
 
-Use AskUserQuestion:
-- header: "Codebase"
-- question: "I detected existing code in this directory. Would you like to map the codebase first?"
-- options:
-  - "Map codebase first" — Run /gsd:map-codebase to understand existing architecture (Recommended)
-  - "Skip mapping" — Proceed with project initialization
+<prompt_user>
+  <question header="Codebase">I detected existing code in this directory. Would you like to map the codebase first?</question>
+  <option label="Map codebase first">Run the `gsd_map_codebase` tool to understand existing architecture (Recommended)</option>
+  <option label="Skip mapping">Proceed with project initialization</option>
+</prompt_user>
 
 **If "Map codebase first":**
 ```
-Run `/gsd:map-codebase` first, then return to `/gsd:new-project`
+Call the `gsd_map_codebase` tool first, then return to the `gsd_new_project` tool
 ```
 Exit command.
 
@@ -87,82 +82,51 @@ YOLO mode is implicit (auto = YOLO). Ask remaining config questions:
 
 **Round 1 — Core settings (3 questions, no Mode question):**
 
-```
-AskUserQuestion([
-  {
-    header: "Depth",
-    question: "How thorough should planning be?",
-    multiSelect: false,
-    options: [
-      { label: "Quick (Recommended)", description: "Ship fast (3-5 phases, 1-3 plans each)" },
-      { label: "Standard", description: "Balanced scope and speed (5-8 phases, 3-5 plans each)" },
-      { label: "Comprehensive", description: "Thorough coverage (8-12 phases, 5-10 plans each)" }
-    ]
-  },
-  {
-    header: "Execution",
-    question: "Run plans in parallel?",
-    multiSelect: false,
-    options: [
-      { label: "Parallel (Recommended)", description: "Independent plans run simultaneously" },
-      { label: "Sequential", description: "One plan at a time" }
-    ]
-  },
-  {
-    header: "Git Tracking",
-    question: "Commit planning docs to git?",
-    multiSelect: false,
-    options: [
-      { label: "Yes (Recommended)", description: "Planning docs tracked in version control" },
-      { label: "No", description: "Keep .planning/ local-only (add to .gitignore)" }
-    ]
-  }
-])
-```
+<prompt_user>
+  <question header="Depth">How thorough should planning be?</question>
+  <option label="Quick (Recommended)">Ship fast (3-5 phases, 1-3 plans each)</option>
+  <option label="Standard">Balanced scope and speed (5-8 phases, 3-5 plans each)</option>
+  <option label="Comprehensive">Thorough coverage (8-12 phases, 5-10 plans each)</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Execution">Run plans in parallel?</question>
+  <option label="Parallel (Recommended)">Independent plans run simultaneously</option>
+  <option label="Sequential">One plan at a time</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Git Tracking">Commit planning docs to git?</question>
+  <option label="Yes (Recommended)">Planning docs tracked in version control</option>
+  <option label="No">Keep .planning/ local-only (add to .gitignore)</option>
+</prompt_user>
 
 **Round 2 — Workflow agents (same as Step 5):**
 
-```
-AskUserQuestion([
-  {
-    header: "Research",
-    question: "Research before planning each phase? (adds tokens/time)",
-    multiSelect: false,
-    options: [
-      { label: "Yes (Recommended)", description: "Investigate domain, find patterns, surface gotchas" },
-      { label: "No", description: "Plan directly from requirements" }
-    ]
-  },
-  {
-    header: "Plan Check",
-    question: "Verify plans will achieve their goals? (adds tokens/time)",
-    multiSelect: false,
-    options: [
-      { label: "Yes (Recommended)", description: "Catch gaps before execution starts" },
-      { label: "No", description: "Execute plans without verification" }
-    ]
-  },
-  {
-    header: "Verifier",
-    question: "Verify work satisfies requirements after each phase? (adds tokens/time)",
-    multiSelect: false,
-    options: [
-      { label: "Yes (Recommended)", description: "Confirm deliverables match phase goals" },
-      { label: "No", description: "Trust execution, skip verification" }
-    ]
-  },
-  {
-    header: "AI Models",
-    question: "Which AI models for planning agents?",
-    multiSelect: false,
-    options: [
-      { label: "Balanced (Recommended)", description: "Sonnet for most agents — good quality/cost ratio" },
-      { label: "Quality", description: "Opus for research/roadmap — higher cost, deeper analysis" },
-      { label: "Budget", description: "Haiku where possible — fastest, lowest cost" }
-    ]
-  }
-])
-```
+<prompt_user>
+  <question header="Research">Research before planning each phase? (adds tokens/time)</question>
+  <option label="Yes (Recommended)">Investigate domain, find patterns, surface gotchas</option>
+  <option label="No">Plan directly from requirements</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Plan Check">Verify plans will achieve their goals? (adds tokens/time)</question>
+  <option label="Yes (Recommended)">Catch gaps before execution starts</option>
+  <option label="No">Execute plans without verification</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Verifier">Verify work satisfies requirements after each phase? (adds tokens/time)</question>
+  <option label="Yes (Recommended)">Confirm deliverables match phase goals</option>
+  <option label="No">Trust execution, skip verification</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="AI Models">Which AI models for planning agents?</question>
+  <option label="Balanced (Recommended)">Sonnet for most agents — good quality/cost ratio</option>
+  <option label="Quality">Opus for research/roadmap — higher cost, deeper analysis</option>
+  <option label="Budget">Haiku where possible — fastest, lowest cost</option>
+</prompt_user>
 
 Create `.planning/config.json` with mode set to "yolo":
 
@@ -188,14 +152,13 @@ Create `.planning/config.json` with mode set to "yolo":
 
 ```bash
 mkdir -p .planning
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "chore: add project config" --files .planning/config.json
 ```
+
+Call the `gsd_commit_work` tool with `{ "message": "chore: add project config", "files": ".planning/config.json" }`.
 
 **Persist auto-advance to config (survives context compaction):**
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs config-set workflow.auto_advance true
-```
+Call the `gsd_config_set` tool with `{ "key": "workflow.auto_advance", "value": "true" }`.
 
 Proceed to Step 4 (skip Steps 3 and 5).
 
@@ -213,7 +176,7 @@ Proceed to Step 4 (skip Steps 3 and 5).
 
 **Open the conversation:**
 
-Ask inline (freeform, NOT AskUserQuestion):
+Ask inline (freeform, NOT prompt_user):
 
 "What do you want to build?"
 
@@ -221,7 +184,7 @@ Wait for their response. This gives you the context needed to ask intelligent fo
 
 **Follow the thread:**
 
-Based on what they said, ask follow-up questions that dig into their response. Use AskUserQuestion with options that probe what they mentioned — interpretations, clarifications, concrete examples.
+Based on what they said, ask follow-up questions that dig into their response. Use prompt_user with options that probe what they mentioned — interpretations, clarifications, concrete examples.
 
 Keep following threads. Each answer opens new threads to explore. Ask about:
 - What excited them
@@ -243,13 +206,13 @@ As you go, mentally check the context checklist from `questioning.md`. If gaps r
 
 **Decision gate:**
 
-When you could write a clear PROJECT.md, use AskUserQuestion:
+When you could write a clear PROJECT.md, use prompt_user:
 
-- header: "Ready?"
-- question: "I think I understand what you're after. Ready to create PROJECT.md?"
-- options:
-  - "Create PROJECT.md" — Let's move forward
-  - "Keep exploring" — I want to share more / ask me more
+<prompt_user>
+  <question header="Ready?">I think I understand what you're after. Ready to create PROJECT.md?</question>
+  <option label="Create PROJECT.md">Let's move forward</option>
+  <option label="Keep exploring">I want to share more / ask me more</option>
+</prompt_user>
 
 If "Keep exploring" — ask what they want to add, or identify gaps and probe naturally.
 
@@ -338,8 +301,9 @@ Do not compress. Capture everything gathered.
 
 ```bash
 mkdir -p .planning
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs: initialize project" --files .planning/PROJECT.md
 ```
+
+Call the `gsd_commit_work` tool with `{ "message": "docs: initialize project", "files": ".planning/PROJECT.md" }`.
 
 ## 5. Workflow Preferences
 
@@ -347,19 +311,11 @@ node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs: initialize project"
 
 **Check for global defaults** at `~/.gsd/defaults.json`. If the file exists, offer to use saved defaults:
 
-```
-AskUserQuestion([
-  {
-    question: "Use your saved default settings? (from ~/.gsd/defaults.json)",
-    header: "Defaults",
-    multiSelect: false,
-    options: [
-      { label: "Yes (Recommended)", description: "Use saved defaults, skip settings questions" },
-      { label: "No", description: "Configure settings manually" }
-    ]
-  }
-])
-```
+<prompt_user>
+  <question header="Defaults">Use your saved default settings? (from ~/.gsd/defaults.json)</question>
+  <option label="Yes (Recommended)">Use saved defaults, skip settings questions</option>
+  <option label="No">Configure settings manually</option>
+</prompt_user>
 
 If "Yes": read `~/.gsd/defaults.json`, use those values for config.json, and skip directly to **Commit config.json** below.
 
@@ -367,47 +323,30 @@ If "No" or `~/.gsd/defaults.json` doesn't exist: proceed with the questions belo
 
 **Round 1 — Core workflow settings (4 questions):**
 
-```
-questions: [
-  {
-    header: "Mode",
-    question: "How do you want to work?",
-    multiSelect: false,
-    options: [
-      { label: "YOLO (Recommended)", description: "Auto-approve, just execute" },
-      { label: "Interactive", description: "Confirm at each step" }
-    ]
-  },
-  {
-    header: "Depth",
-    question: "How thorough should planning be?",
-    multiSelect: false,
-    options: [
-      { label: "Quick", description: "Ship fast (3-5 phases, 1-3 plans each)" },
-      { label: "Standard", description: "Balanced scope and speed (5-8 phases, 3-5 plans each)" },
-      { label: "Comprehensive", description: "Thorough coverage (8-12 phases, 5-10 plans each)" }
-    ]
-  },
-  {
-    header: "Execution",
-    question: "Run plans in parallel?",
-    multiSelect: false,
-    options: [
-      { label: "Parallel (Recommended)", description: "Independent plans run simultaneously" },
-      { label: "Sequential", description: "One plan at a time" }
-    ]
-  },
-  {
-    header: "Git Tracking",
-    question: "Commit planning docs to git?",
-    multiSelect: false,
-    options: [
-      { label: "Yes (Recommended)", description: "Planning docs tracked in version control" },
-      { label: "No", description: "Keep .planning/ local-only (add to .gitignore)" }
-    ]
-  }
-]
-```
+<prompt_user>
+  <question header="Mode">How do you want to work?</question>
+  <option label="YOLO (Recommended)">Auto-approve, just execute</option>
+  <option label="Interactive">Confirm at each step</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Depth">How thorough should planning be?</question>
+  <option label="Quick">Ship fast (3-5 phases, 1-3 plans each)</option>
+  <option label="Standard">Balanced scope and speed (5-8 phases, 3-5 plans each)</option>
+  <option label="Comprehensive">Thorough coverage (8-12 phases, 5-10 plans each)</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Execution">Run plans in parallel?</question>
+  <option label="Parallel (Recommended)">Independent plans run simultaneously</option>
+  <option label="Sequential">One plan at a time</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Git Tracking">Commit planning docs to git?</question>
+  <option label="Yes (Recommended)">Planning docs tracked in version control</option>
+  <option label="No">Keep .planning/ local-only (add to .gitignore)</option>
+</prompt_user>
 
 **Round 2 — Workflow agents:**
 
@@ -421,47 +360,30 @@ These spawn additional agents during planning/execution. They add tokens and tim
 
 All recommended for important projects. Skip for quick experiments.
 
-```
-questions: [
-  {
-    header: "Research",
-    question: "Research before planning each phase? (adds tokens/time)",
-    multiSelect: false,
-    options: [
-      { label: "Yes (Recommended)", description: "Investigate domain, find patterns, surface gotchas" },
-      { label: "No", description: "Plan directly from requirements" }
-    ]
-  },
-  {
-    header: "Plan Check",
-    question: "Verify plans will achieve their goals? (adds tokens/time)",
-    multiSelect: false,
-    options: [
-      { label: "Yes (Recommended)", description: "Catch gaps before execution starts" },
-      { label: "No", description: "Execute plans without verification" }
-    ]
-  },
-  {
-    header: "Verifier",
-    question: "Verify work satisfies requirements after each phase? (adds tokens/time)",
-    multiSelect: false,
-    options: [
-      { label: "Yes (Recommended)", description: "Confirm deliverables match phase goals" },
-      { label: "No", description: "Trust execution, skip verification" }
-    ]
-  },
-  {
-    header: "AI Models",
-    question: "Which AI models for planning agents?",
-    multiSelect: false,
-    options: [
-      { label: "Balanced (Recommended)", description: "Sonnet for most agents — good quality/cost ratio" },
-      { label: "Quality", description: "Opus for research/roadmap — higher cost, deeper analysis" },
-      { label: "Budget", description: "Haiku where possible — fastest, lowest cost" }
-    ]
-  }
-]
-```
+<prompt_user>
+  <question header="Research">Research before planning each phase? (adds tokens/time)</question>
+  <option label="Yes (Recommended)">Investigate domain, find patterns, surface gotchas</option>
+  <option label="No">Plan directly from requirements</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Plan Check">Verify plans will achieve their goals? (adds tokens/time)</question>
+  <option label="Yes (Recommended)">Catch gaps before execution starts</option>
+  <option label="No">Execute plans without verification</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="Verifier">Verify work satisfies requirements after each phase? (adds tokens/time)</question>
+  <option label="Yes (Recommended)">Confirm deliverables match phase goals</option>
+  <option label="No">Trust execution, skip verification</option>
+</prompt_user>
+
+<prompt_user>
+  <question header="AI Models">Which AI models for planning agents?</question>
+  <option label="Balanced (Recommended)">Sonnet for most agents — good quality/cost ratio</option>
+  <option label="Quality">Opus for research/roadmap — higher cost, deeper analysis</option>
+  <option label="Budget">Haiku where possible — fastest, lowest cost</option>
+</prompt_user>
 
 Create `.planning/config.json` with all settings:
 
@@ -489,11 +411,9 @@ Create `.planning/config.json` with all settings:
 
 **Commit config.json:**
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "chore: add project config" --files .planning/config.json
-```
+Call the `gsd_commit_work` tool with `{ "message": "chore: add project config", "files": ".planning/config.json" }`.
 
-**Note:** Run `/gsd:settings` anytime to update these preferences.
+**Note:** Call the `gsd_settings` tool anytime to update these preferences.
 
 ## 5.5. Resolve Model Profile
 
@@ -503,12 +423,11 @@ Use models from init: `researcher_model`, `synthesizer_model`, `roadmapper_model
 
 **If auto mode:** Default to "Research first" without asking.
 
-Use AskUserQuestion:
-- header: "Research"
-- question: "Research the domain ecosystem before defining requirements?"
-- options:
-  - "Research first (Recommended)" — Discover standard stacks, expected features, architecture patterns
-  - "Skip research" — I know this domain well, go straight to requirements
+<prompt_user>
+  <question header="Research">Research the domain ecosystem before defining requirements?</question>
+  <option label="Research first (Recommended)">Discover standard stacks, expected features, architecture patterns</option>
+  <option label="Skip research">I know this domain well, go straight to requirements</option>
+</prompt_user>
 
 **If "Research first":**
 
@@ -544,189 +463,208 @@ Display spawning indicator:
 Spawn 4 parallel gsd-project-researcher agents with rich context:
 
 ```
-Task(prompt="First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
+<delegate>
+  <agent type="general-purpose" model="{researcher_model}">Stack research</agent>
+  <prompt>
+    First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
 
-<research_type>
-Project Research — Stack dimension for [domain].
-</research_type>
+    <research_type>
+    Project Research — Stack dimension for [domain].
+    </research_type>
 
-<milestone_context>
-[greenfield OR subsequent]
+    <milestone_context>
+    [greenfield OR subsequent]
 
-Greenfield: Research the standard stack for building [domain] from scratch.
-Subsequent: Research what's needed to add [target features] to an existing [domain] app. Don't re-research the existing system.
-</milestone_context>
+    Greenfield: Research the standard stack for building [domain] from scratch.
+    Subsequent: Research what's needed to add [target features] to an existing [domain] app. Don't re-research the existing system.
+    </milestone_context>
 
-<question>
-What's the standard 2025 stack for [domain]?
-</question>
+    <question>
+    What's the standard 2025 stack for [domain]?
+    </question>
 
-<project_context>
-[PROJECT.md summary - core value, constraints, what they're building]
-</project_context>
+    <project_context>
+    [PROJECT.md summary - core value, constraints, what they're building]
+    </project_context>
 
-<downstream_consumer>
-Your STACK.md feeds into roadmap creation. Be prescriptive:
-- Specific libraries with versions
-- Clear rationale for each choice
-- What NOT to use and why
-</downstream_consumer>
+    <downstream_consumer>
+    Your STACK.md feeds into roadmap creation. Be prescriptive:
+    - Specific libraries with versions
+    - Clear rationale for each choice
+    - What NOT to use and why
+    </downstream_consumer>
 
-<quality_gate>
-- [ ] Versions are current (verify with Context7/official docs, not training data)
-- [ ] Rationale explains WHY, not just WHAT
-- [ ] Confidence levels assigned to each recommendation
-</quality_gate>
+    <quality_gate>
+    - [ ] Versions are current (verify with Context7/official docs, not training data)
+    - [ ] Rationale explains WHY, not just WHAT
+    - [ ] Confidence levels assigned to each recommendation
+    </quality_gate>
 
-<output>
-Write to: .planning/research/STACK.md
-Use template: ~/.claude/get-shit-done/templates/research-project/STACK.md
-</output>
-", subagent_type="general-purpose", model="{researcher_model}", description="Stack research")
+    <output>
+    Write to: .planning/research/STACK.md
+    Use template: ~/.claude/get-shit-done/templates/research-project/STACK.md
+    </output>
+  </prompt>
+</delegate>
 
-Task(prompt="First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
+<delegate>
+  <agent type="general-purpose" model="{researcher_model}">Features research</agent>
+  <prompt>
+    First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
 
-<research_type>
-Project Research — Features dimension for [domain].
-</research_type>
+    <research_type>
+    Project Research — Features dimension for [domain].
+    </research_type>
 
-<milestone_context>
-[greenfield OR subsequent]
+    <milestone_context>
+    [greenfield OR subsequent]
 
-Greenfield: What features do [domain] products have? What's table stakes vs differentiating?
-Subsequent: How do [target features] typically work? What's expected behavior?
-</milestone_context>
+    Greenfield: What features do [domain] products have? What's table stakes vs differentiating?
+    Subsequent: How do [target features] typically work? What's expected behavior?
+    </milestone_context>
 
-<question>
-What features do [domain] products have? What's table stakes vs differentiating?
-</question>
+    <question>
+    What features do [domain] products have? What's table stakes vs differentiating?
+    </question>
 
-<project_context>
-[PROJECT.md summary]
-</project_context>
+    <project_context>
+    [PROJECT.md summary]
+    </project_context>
 
-<downstream_consumer>
-Your FEATURES.md feeds into requirements definition. Categorize clearly:
-- Table stakes (must have or users leave)
-- Differentiators (competitive advantage)
-- Anti-features (things to deliberately NOT build)
-</downstream_consumer>
+    <downstream_consumer>
+    Your FEATURES.md feeds into requirements definition. Categorize clearly:
+    - Table stakes (must have or users leave)
+    - Differentiators (competitive advantage)
+    - Anti-features (things to deliberately NOT build)
+    </downstream_consumer>
 
-<quality_gate>
-- [ ] Categories are clear (table stakes vs differentiators vs anti-features)
-- [ ] Complexity noted for each feature
-- [ ] Dependencies between features identified
-</quality_gate>
+    <quality_gate>
+    - [ ] Categories are clear (table stakes vs differentiators vs anti-features)
+    - [ ] Complexity noted for each feature
+    - [ ] Dependencies between features identified
+    </quality_gate>
 
-<output>
-Write to: .planning/research/FEATURES.md
-Use template: ~/.claude/get-shit-done/templates/research-project/FEATURES.md
-</output>
-", subagent_type="general-purpose", model="{researcher_model}", description="Features research")
+    <output>
+    Write to: .planning/research/FEATURES.md
+    Use template: ~/.claude/get-shit-done/templates/research-project/FEATURES.md
+    </output>
+  </prompt>
+</delegate>
 
-Task(prompt="First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
+<delegate>
+  <agent type="general-purpose" model="{researcher_model}">Architecture research</agent>
+  <prompt>
+    First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
 
-<research_type>
-Project Research — Architecture dimension for [domain].
-</research_type>
+    <research_type>
+    Project Research — Architecture dimension for [domain].
+    </research_type>
 
-<milestone_context>
-[greenfield OR subsequent]
+    <milestone_context>
+    [greenfield OR subsequent]
 
-Greenfield: How are [domain] systems typically structured? What are major components?
-Subsequent: How do [target features] integrate with existing [domain] architecture?
-</milestone_context>
+    Greenfield: How are [domain] systems typically structured? What are major components?
+    Subsequent: How do [target features] integrate with existing [domain] architecture?
+    </milestone_context>
 
-<question>
-How are [domain] systems typically structured? What are major components?
-</question>
+    <question>
+    How are [domain] systems typically structured? What are major components?
+    </question>
 
-<project_context>
-[PROJECT.md summary]
-</project_context>
+    <project_context>
+    [PROJECT.md summary]
+    </project_context>
 
-<downstream_consumer>
-Your ARCHITECTURE.md informs phase structure in roadmap. Include:
-- Component boundaries (what talks to what)
-- Data flow (how information moves)
-- Suggested build order (dependencies between components)
-</downstream_consumer>
+    <downstream_consumer>
+    Your ARCHITECTURE.md informs phase structure in roadmap. Include:
+    - Component boundaries (what talks to what)
+    - Data flow (how information moves)
+    - Suggested build order (dependencies between components)
+    </downstream_consumer>
 
-<quality_gate>
-- [ ] Components clearly defined with boundaries
-- [ ] Data flow direction explicit
-- [ ] Build order implications noted
-</quality_gate>
+    <quality_gate>
+    - [ ] Components clearly defined with boundaries
+    - [ ] Data flow direction explicit
+    - [ ] Build order implications noted
+    </quality_gate>
 
-<output>
-Write to: .planning/research/ARCHITECTURE.md
-Use template: ~/.claude/get-shit-done/templates/research-project/ARCHITECTURE.md
-</output>
-", subagent_type="general-purpose", model="{researcher_model}", description="Architecture research")
+    <output>
+    Write to: .planning/research/ARCHITECTURE.md
+    Use template: ~/.claude/get-shit-done/templates/research-project/ARCHITECTURE.md
+    </output>
+  </prompt>
+</delegate>
 
-Task(prompt="First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
+<delegate>
+  <agent type="general-purpose" model="{researcher_model}">Pitfalls research</agent>
+  <prompt>
+    First, read ~/.claude/agents/gsd-project-researcher.md for your role and instructions.
 
-<research_type>
-Project Research — Pitfalls dimension for [domain].
-</research_type>
+    <research_type>
+    Project Research — Pitfalls dimension for [domain].
+    </research_type>
 
-<milestone_context>
-[greenfield OR subsequent]
+    <milestone_context>
+    [greenfield OR subsequent]
 
-Greenfield: What do [domain] projects commonly get wrong? Critical mistakes?
-Subsequent: What are common mistakes when adding [target features] to [domain]?
-</milestone_context>
+    Greenfield: What do [domain] projects commonly get wrong? Critical mistakes?
+    Subsequent: What are common mistakes when adding [target features] to [domain]?
+    </milestone_context>
 
-<question>
-What do [domain] projects commonly get wrong? Critical mistakes?
-</question>
+    <question>
+    What do [domain] projects commonly get wrong? Critical mistakes?
+    </question>
 
-<project_context>
-[PROJECT.md summary]
-</project_context>
+    <project_context>
+    [PROJECT.md summary]
+    </project_context>
 
-<downstream_consumer>
-Your PITFALLS.md prevents mistakes in roadmap/planning. For each pitfall:
-- Warning signs (how to detect early)
-- Prevention strategy (how to avoid)
-- Which phase should address it
-</downstream_consumer>
+    <downstream_consumer>
+    Your PITFALLS.md prevents mistakes in roadmap/planning. For each pitfall:
+    - Warning signs (how to detect early)
+    - Prevention strategy (how to avoid)
+    - Which phase should address it
+    </downstream_consumer>
 
-<quality_gate>
-- [ ] Pitfalls are specific to this domain (not generic advice)
-- [ ] Prevention strategies are actionable
-- [ ] Phase mapping included where relevant
-</quality_gate>
+    <quality_gate>
+    - [ ] Pitfalls are specific to this domain (not generic advice)
+    - [ ] Prevention strategies are actionable
+    - [ ] Phase mapping included where relevant
+    </quality_gate>
 
-<output>
-Write to: .planning/research/PITFALLS.md
-Use template: ~/.claude/get-shit-done/templates/research-project/PITFALLS.md
-</output>
-", subagent_type="general-purpose", model="{researcher_model}", description="Pitfalls research")
+    <output>
+    Write to: .planning/research/PITFALLS.md
+    Use template: ~/.claude/get-shit-done/templates/research-project/PITFALLS.md
+    </output>
+  </prompt>
+</delegate>
 ```
 
 After all 4 agents complete, spawn synthesizer to create SUMMARY.md:
 
 ```
-Task(prompt="
-<task>
-Synthesize research outputs into SUMMARY.md.
-</task>
+<delegate>
+  <agent type="gsd-research-synthesizer" model="{synthesizer_model}">Synthesize research</agent>
+  <prompt>
+    <task>
+    Synthesize research outputs into SUMMARY.md.
+    </task>
 
-<research_files>
-Read these files:
-- .planning/research/STACK.md
-- .planning/research/FEATURES.md
-- .planning/research/ARCHITECTURE.md
-- .planning/research/PITFALLS.md
-</research_files>
+    <research_files>
+    Read these files:
+    - .planning/research/STACK.md
+    - .planning/research/FEATURES.md
+    - .planning/research/ARCHITECTURE.md
+    - .planning/research/PITFALLS.md
+    </research_files>
 
-<output>
-Write to: .planning/research/SUMMARY.md
-Use template: ~/.claude/get-shit-done/templates/research-project/SUMMARY.md
-Commit after writing.
-</output>
-", subagent_type="gsd-research-synthesizer", model="{synthesizer_model}", description="Synthesize research")
+    <output>
+    Write to: .planning/research/SUMMARY.md
+    Use template: ~/.claude/get-shit-done/templates/research-project/SUMMARY.md
+    Commit after writing.
+    </output>
+  </prompt>
+</delegate>
 ```
 
 Display research complete banner and key findings:
@@ -768,7 +706,7 @@ Read PROJECT.md and extract:
 - Auto-include all table stakes features (users expect these)
 - Include features explicitly mentioned in provided document
 - Auto-defer differentiators not mentioned in document
-- Skip per-category AskUserQuestion loops
+- Skip per-category prompt_user loops
 - Skip "Any additions?" question
 - Skip requirements approval gate
 - Generate REQUIREMENTS.md and commit directly
@@ -809,16 +747,15 @@ For each capability mentioned:
 
 **Scope each category:**
 
-For each category, use AskUserQuestion:
+For each category, use prompt_user (multiSelect: true):
 
-- header: "[Category]" (max 12 chars)
-- question: "Which [category] features are in v1?"
-- multiSelect: true
-- options:
-  - "[Feature 1]" — [brief description]
-  - "[Feature 2]" — [brief description]
-  - "[Feature 3]" — [brief description]
-  - "None for v1" — Defer entire category
+<prompt_user>
+  <question header="[Category]">Which [category] features are in v1?</question>
+  <option label="[Feature 1]">[brief description]</option>
+  <option label="[Feature 2]">[brief description]</option>
+  <option label="[Feature 3]">[brief description]</option>
+  <option label="None for v1">Defer entire category</option>
+</prompt_user>
 
 Track responses:
 - Selected features → v1 requirements
@@ -827,12 +764,11 @@ Track responses:
 
 **Identify gaps:**
 
-Use AskUserQuestion:
-- header: "Additions"
-- question: "Any requirements research missed? (Features specific to your vision)"
-- options:
-  - "No, research covered it" — Proceed
-  - "Yes, let me add some" — Capture additions
+<prompt_user>
+  <question header="Additions">Any requirements research missed? (Features specific to your vision)</question>
+  <option label="No, research covered it">Proceed</option>
+  <option label="Yes, let me add some">Capture additions</option>
+</prompt_user>
 
 **Validate core value:**
 
@@ -887,9 +823,7 @@ If "adjust": Return to scoping.
 
 **Commit requirements:**
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs: define v1 requirements" --files .planning/REQUIREMENTS.md
-```
+Call the `gsd_commit_work` tool with `{ "message": "docs: define v1 requirements", "files": ".planning/REQUIREMENTS.md" }`.
 
 ## 8. Create Roadmap
 
@@ -905,35 +839,38 @@ Display stage banner:
 Spawn gsd-roadmapper agent with context:
 
 ```
-Task(prompt="
-<planning_context>
+<delegate>
+  <agent type="gsd-roadmapper" model="{roadmapper_model}">Create roadmap</agent>
+  <prompt>
+    <planning_context>
 
-**Project:**
-@.planning/PROJECT.md
+    **Project:**
+    @.planning/PROJECT.md
 
-**Requirements:**
-@.planning/REQUIREMENTS.md
+    **Requirements:**
+    @.planning/REQUIREMENTS.md
 
-**Research (if exists):**
-@.planning/research/SUMMARY.md
+    **Research (if exists):**
+    @.planning/research/SUMMARY.md
 
-**Config:**
-@.planning/config.json
+    **Config:**
+    @.planning/config.json
 
-</planning_context>
+    </planning_context>
 
-<instructions>
-Create roadmap:
-1. Derive phases from requirements (don't impose structure)
-2. Map every v1 requirement to exactly one phase
-3. Derive 2-5 success criteria per phase (observable user behaviors)
-4. Validate 100% coverage
-5. Write files immediately (ROADMAP.md, STATE.md, update REQUIREMENTS.md traceability)
-6. Return ROADMAP CREATED with summary
+    <instructions>
+    Create roadmap:
+    1. Derive phases from requirements (don't impose structure)
+    2. Map every v1 requirement to exactly one phase
+    3. Derive 2-5 success criteria per phase (observable user behaviors)
+    4. Validate 100% coverage
+    5. Write files immediately (ROADMAP.md, STATE.md, update REQUIREMENTS.md traceability)
+    6. Return ROADMAP CREATED with summary
 
-Write files first, then return. This ensures artifacts persist even if context is lost.
-</instructions>
-", subagent_type="gsd-roadmapper", model="{roadmapper_model}", description="Create roadmap")
+    Write files first, then return. This ensures artifacts persist even if context is lost.
+    </instructions>
+  </prompt>
+</delegate>
 ```
 
 **Handle roadmapper return:**
@@ -987,13 +924,12 @@ Success criteria:
 
 **CRITICAL: Ask for approval before committing (interactive mode only):**
 
-Use AskUserQuestion:
-- header: "Roadmap"
-- question: "Does this roadmap structure work for you?"
-- options:
-  - "Approve" — Commit and continue
-  - "Adjust phases" — Tell me what to change
-  - "Review full file" — Show raw ROADMAP.md
+<prompt_user>
+  <question header="Roadmap">Does this roadmap structure work for you?</question>
+  <option label="Approve">Commit and continue</option>
+  <option label="Adjust phases">Tell me what to change</option>
+  <option label="Review full file">Show raw ROADMAP.md</option>
+</prompt_user>
 
 **If "Approve":** Continue to commit.
 
@@ -1001,17 +937,20 @@ Use AskUserQuestion:
 - Get user's adjustment notes
 - Re-spawn roadmapper with revision context:
   ```
-  Task(prompt="
-  <revision>
-  User feedback on roadmap:
-  [user's notes]
+  <delegate>
+    <agent type="gsd-roadmapper" model="{roadmapper_model}">Revise roadmap</agent>
+    <prompt>
+      <revision>
+      User feedback on roadmap:
+      [user's notes]
 
-  Current ROADMAP.md: @.planning/ROADMAP.md
+      Current ROADMAP.md: @.planning/ROADMAP.md
 
-  Update the roadmap based on feedback. Edit files in place.
-  Return ROADMAP REVISED with changes made.
-  </revision>
-  ", subagent_type="gsd-roadmapper", model="{roadmapper_model}", description="Revise roadmap")
+      Update the roadmap based on feedback. Edit files in place.
+      Return ROADMAP REVISED with changes made.
+      </revision>
+    </prompt>
+  </delegate>
   ```
 - Present revised roadmap
 - Loop until user approves
@@ -1020,9 +959,7 @@ Use AskUserQuestion:
 
 **Commit roadmap (after approval or auto mode):**
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs: create roadmap ([N] phases)" --files .planning/ROADMAP.md .planning/STATE.md .planning/REQUIREMENTS.md
-```
+Call the `gsd_commit_work` tool with `{ "message": "docs: create roadmap ([N] phases)", "files": ".planning/ROADMAP.md .planning/STATE.md .planning/REQUIREMENTS.md" }`.
 
 ## 9. Done
 
@@ -1054,7 +991,7 @@ Present completion summary:
 ╚══════════════════════════════════════════╝
 ```
 
-Exit skill and invoke SlashCommand("/gsd:discuss-phase 1 --auto")
+Exit skill and call the `gsd_discuss_phase` tool with `{ "phase": "1", "auto": "true" }`.
 
 **If interactive mode:**
 
@@ -1065,14 +1002,14 @@ Exit skill and invoke SlashCommand("/gsd:discuss-phase 1 --auto")
 
 **Phase 1: [Phase Name]** — [Goal from ROADMAP.md]
 
-/gsd:discuss-phase 1 — gather context and clarify approach
+Call the `gsd_discuss_phase` tool with `{ "phase": "1" }` — gather context and clarify approach
 
-<sub>/clear first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ---
 
 **Also available:**
-- /gsd:plan-phase 1 — skip discussion, plan directly
+- Call the `gsd_plan_phase` tool with `{ "phase": "1" }` — skip discussion, plan directly
 
 ───────────────────────────────────────────────────────────────
 ```
@@ -1113,8 +1050,9 @@ Exit skill and invoke SlashCommand("/gsd:discuss-phase 1 --auto")
 - [ ] ROADMAP.md created with phases, requirement mappings, success criteria
 - [ ] STATE.md initialized
 - [ ] REQUIREMENTS.md traceability updated
-- [ ] User knows next step is `/gsd:discuss-phase 1`
+- [ ] User knows next step is to call the `gsd_discuss_phase` tool with `{ "phase": "1" }`
 
 **Atomic commits:** Each phase commits its artifacts immediately. If context is lost, artifacts persist.
 
 </success_criteria>
+</output>

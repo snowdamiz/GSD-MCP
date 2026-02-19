@@ -11,9 +11,9 @@ Standard format for presenting next steps after completing a command or workflow
 
 **{identifier}: {name}** — {one-line description}
 
-`{command to copy-paste}`
+Call the `{tool_name}` tool with `{ "phase": "{N}" }`
 
-<sub>`/clear` first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ---
 
@@ -26,10 +26,10 @@ Standard format for presenting next steps after completing a command or workflow
 
 ## Format Rules
 
-1. **Always show what it is** — name + description, never just a command path
+1. **Always show what it is** — name + description, never just a tool name
 2. **Pull context from source** — ROADMAP.md for phases, PLAN.md `<objective>` for plans
-3. **Command in inline code** — backticks, easy to copy-paste, renders as clickable link
-4. **`/clear` explanation** — always include, keeps it concise but explains why
+3. **Tool call in inline code** — backticks, easy to identify
+4. **Fresh conversation explanation** — always include, keeps it concise but explains why
 5. **"Also available" not "Other options"** — sounds more app-like
 6. **Visual separators** — `---` above and below to make it stand out
 
@@ -44,15 +44,15 @@ Standard format for presenting next steps after completing a command or workflow
 
 **02-03: Refresh Token Rotation** — Add /api/auth/refresh with sliding expiry
 
-`/gsd:execute-phase 2`
+Call the `gsd_execute_phase` tool with `{ "phase": "2" }`
 
-<sub>`/clear` first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ---
 
 **Also available:**
 - Review plan before executing
-- `/gsd:list-phase-assumptions 2` — check assumptions
+- Call the `gsd_list_phase_assumptions` tool with `{ "phase": "2" }` — check assumptions
 
 ---
 ```
@@ -69,9 +69,9 @@ Add note that this is the last plan and what comes after:
 **02-03: Refresh Token Rotation** — Add /api/auth/refresh with sliding expiry
 <sub>Final plan in Phase 2</sub>
 
-`/gsd:execute-phase 2`
+Call the `gsd_execute_phase` tool with `{ "phase": "2" }`
 
-<sub>`/clear` first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ---
 
@@ -91,15 +91,15 @@ Add note that this is the last plan and what comes after:
 
 **Phase 2: Authentication** — JWT login flow with refresh tokens
 
-`/gsd:plan-phase 2`
+Call the `gsd_plan_phase` tool with `{ "phase": "2" }`
 
-<sub>`/clear` first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ---
 
 **Also available:**
-- `/gsd:discuss-phase 2` — gather context first
-- `/gsd:research-phase 2` — investigate unknowns
+- Call the `gsd_discuss_phase` tool with `{ "phase": "2" }` — gather context first
+- Call the `gsd_research_phase` tool with `{ "phase": "2" }` — investigate unknowns
 - Review roadmap
 
 ---
@@ -120,15 +120,15 @@ Show completion status before next action:
 
 **Phase 3: Core Features** — User dashboard, settings, and data export
 
-`/gsd:plan-phase 3`
+Call the `gsd_plan_phase` tool with `{ "phase": "3" }`
 
-<sub>`/clear` first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ---
 
 **Also available:**
-- `/gsd:discuss-phase 3` — gather context first
-- `/gsd:research-phase 3` — investigate unknowns
+- Call the `gsd_discuss_phase` tool with `{ "phase": "3" }` — gather context first
+- Call the `gsd_research_phase` tool with `{ "phase": "3" }` — investigate unknowns
 - Review what Phase 2 built
 
 ---
@@ -145,13 +145,13 @@ When there's no clear primary action:
 
 **Phase 3: Core Features** — User dashboard, settings, and data export
 
-**To plan directly:** `/gsd:plan-phase 3`
+**To plan directly:** Call the `gsd_plan_phase` tool with `{ "phase": "3" }`
 
-**To discuss context first:** `/gsd:discuss-phase 3`
+**To discuss context first:** Call the `gsd_discuss_phase` tool with `{ "phase": "3" }`
 
-**To research unknowns:** `/gsd:research-phase 3`
+**To research unknowns:** Call the `gsd_research_phase` tool with `{ "phase": "3" }`
 
-<sub>`/clear` first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ---
 ```
@@ -169,9 +169,9 @@ All 4 phases shipped
 
 **Start v1.1** — questioning → research → requirements → roadmap
 
-`/gsd:new-milestone`
+Call the `gsd_new_milestone` tool
 
-<sub>`/clear` first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ---
 ```
@@ -213,18 +213,17 @@ Extract: `**02-03: Refresh Token Rotation** — Add /api/auth/refresh with slidi
 ```
 ## To Continue
 
-Run `/clear`, then paste:
-/gsd:execute-phase 2
+Start a fresh conversation, then call the `gsd_execute_phase` tool with `{ "phase": "2" }`
 ```
 
 User has no idea what 02-03 is about.
 
-### Don't: Missing /clear explanation
+### Don't: Missing fresh conversation explanation
 
 ```
-`/gsd:plan-phase 3`
+Call the `gsd_plan_phase` tool with `{ "phase": "3" }`
 
-Run /clear first.
+Start a fresh conversation first.
 ```
 
 Doesn't explain why. User might skip it.
@@ -242,7 +241,7 @@ Sounds like an afterthought. Use "Also available:" instead.
 
 ```
 ```
-/gsd:plan-phase 3
+Call the gsd_plan_phase tool with { "phase": "3" }
 ```
 ```
 

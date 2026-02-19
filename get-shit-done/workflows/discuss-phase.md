@@ -110,17 +110,13 @@ Phase: "API documentation"
 <step name="initialize" priority="first">
 Phase number from argument (required).
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init phase-op "${PHASE}")
-```
-
-Parse JSON for: `commit_docs`, `phase_found`, `phase_dir`, `phase_number`, `phase_name`, `phase_slug`, `padded_phase`, `has_research`, `has_context`, `has_plans`, `has_verification`, `plan_count`, `roadmap_exists`, `planning_exists`.
+Call the `gsd_init_phase_op` tool with `{ "phase": "{PHASE}" }`. Parse the returned JSON for: `commit_docs`, `phase_found`, `phase_dir`, `phase_number`, `phase_name`, `phase_slug`, `padded_phase`, `has_research`, `has_context`, `has_plans`, `has_verification`, `plan_count`, `roadmap_exists`, `planning_exists`.
 
 **If `phase_found` is false:**
 ```
 Phase [X] not found in roadmap.
 
-Use /gsd:progress to see available phases.
+Use the `gsd_progress` tool to see available phases.
 ```
 Exit workflow.
 
@@ -135,13 +131,13 @@ ls ${phase_dir}/*-CONTEXT.md 2>/dev/null
 ```
 
 **If exists:**
-Use AskUserQuestion:
-- header: "Context"
-- question: "Phase [X] already has context. What do you want to do?"
-- options:
-  - "Update it" — Review and revise existing context
-  - "View it" — Show me what's there
-  - "Skip" — Use existing context as-is
+
+<prompt_user>
+  <question header="Context">Phase [X] already has context. What do you want to do?</question>
+  <option label="Update it">Review and revise existing context</option>
+  <option label="View it">Show me what's there</option>
+  <option label="Skip">Use existing context as-is</option>
+</prompt_user>
 
 If "Update": Load existing, continue to analyze_phase
 If "View": Display CONTEXT.md, then offer update/skip
@@ -151,13 +147,12 @@ If "Skip": Exit workflow
 
 Check `has_plans` and `plan_count` from init. **If `has_plans` is true:**
 
-Use AskUserQuestion:
-- header: "Plans exist"
-- question: "Phase [X] already has {plan_count} plan(s) created without user context. Your decisions here won't affect existing plans unless you replan."
-- options:
-  - "Continue and replan after" — Capture context, then run /gsd:plan-phase {X} to replan
-  - "View existing plans" — Show plans before deciding
-  - "Cancel" — Skip discuss-phase
+<prompt_user>
+  <question header="Plans exist">Phase [X] already has {plan_count} plan(s) created without user context. Your decisions here won't affect existing plans unless you replan.</question>
+  <option label="Continue and replan after">Capture context, then call the `gsd_plan_phase` tool with `{ "phase": "{X}" }` to replan</option>
+  <option label="View existing plans">Show plans before deciding</option>
+  <option label="Cancel">Skip discuss-phase</option>
+</prompt_user>
 
 If "Continue and replan after": Continue to analyze_phase.
 If "View existing plans": Display plan files, then offer "Continue" / "Cancel".
@@ -203,12 +198,15 @@ We'll clarify HOW to implement this.
 (New capabilities belong in other phases.)
 ```
 
-**Then use AskUserQuestion (multiSelect: true):**
-- header: "Discuss"
-- question: "Which areas do you want to discuss for [phase name]?"
-- options: Generate 3-4 phase-specific gray areas, each formatted as:
-  - "[Specific area]" (label) — concrete, not generic
-  - [1-2 questions this covers] (description)
+**Then use prompt_user (multiSelect: true):**
+
+<prompt_user>
+  <question header="Discuss">Which areas do you want to discuss for [phase name]?</question>
+  <option label="[Specific area 1]">[1-2 questions this covers]</option>
+  <option label="[Specific area 2]">[1-2 questions this covers]</option>
+  <option label="[Specific area 3]">[1-2 questions this covers]</option>
+  <option label="[Specific area 4]">[1-2 questions this covers]</option>
+</prompt_user>
 
 **Do NOT include a "skip" or "you decide" option.** User ran this command to discuss — give them real choices.
 
@@ -255,25 +253,31 @@ Ask 4 questions per area before offering to continue or move on. Each answer oft
    Let's talk about [Area].
    ```
 
-2. **Ask 4 questions using AskUserQuestion:**
+2. **Ask 4 questions using prompt_user:**
    - header: "[Area]" (max 12 chars — abbreviate if needed)
    - question: Specific decision for this area
-   - options: 2-3 concrete choices (AskUserQuestion adds "Other" automatically)
+   - options: 2-3 concrete choices (prompt_user adds "Other" automatically)
    - Include "You decide" as an option when reasonable — captures Claude discretion
 
 3. **After 4 questions, check:**
-   - header: "[Area]" (max 12 chars)
-   - question: "More questions about [area], or move to next?"
-   - options: "More questions" / "Next area"
+
+   <prompt_user>
+     <question header="[Area]">More questions about [area], or move to next?</question>
+     <option label="More questions">Keep discussing this area</option>
+     <option label="Next area">Move on</option>
+   </prompt_user>
 
    If "More questions" → ask 4 more, then check again
    If "Next area" → proceed to next selected area
    If "Other" (free text) → interpret intent: continuation phrases ("chat more", "keep going", "yes", "more") map to "More questions"; advancement phrases ("done", "move on", "next", "skip") map to "Next area". If ambiguous, ask: "Continue with more questions about [area], or move to the next area?"
 
 4. **After all areas complete:**
-   - header: "Done"
-   - question: "That covers [list areas]. Ready to create context?"
-   - options: "Create context" / "Revisit an area"
+
+   <prompt_user>
+     <question header="Done">That covers [list areas]. Ready to create context?</question>
+     <option label="Create context">Save decisions to CONTEXT.md</option>
+     <option label="Revisit an area">Go back to discuss something more</option>
+   </prompt_user>
 
 **Question design:**
 - Options should be concrete, not abstract ("Cards" not "Option A")
@@ -387,14 +391,14 @@ Created: .planning/phases/${PADDED_PHASE}-${SLUG}/${PADDED_PHASE}-CONTEXT.md
 
 **Phase ${PHASE}: [Name]** — [Goal from ROADMAP.md]
 
-`/gsd:plan-phase ${PHASE}`
+Call the `gsd_plan_phase` tool with `{ "phase": "${PHASE}" }`
 
-<sub>`/clear` first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ---
 
 **Also available:**
-- `/gsd:plan-phase ${PHASE} --skip-research` — plan without research
+- Call the `gsd_plan_phase` tool with `{ "phase": "${PHASE}", "skip_research": "true" }` — plan without research
 - Review/edit CONTEXT.md before continuing
 
 ---
@@ -404,9 +408,7 @@ Created: .planning/phases/${PADDED_PHASE}-${SLUG}/${PADDED_PHASE}-CONTEXT.md
 <step name="git_commit">
 Commit phase context (uses `commit_docs` from init internally):
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs(${padded_phase}): capture phase context" --files "${phase_dir}/${padded_phase}-CONTEXT.md"
-```
+Call the `gsd_commit_work` tool with `{ "message": "docs(${padded_phase}): capture phase context", "files": "${phase_dir}/${padded_phase}-CONTEXT.md" }`.
 
 Confirm: "Committed: docs(${padded_phase}): capture phase context"
 </step>
@@ -414,34 +416,24 @@ Confirm: "Committed: docs(${padded_phase}): capture phase context"
 <step name="update_state">
 Update STATE.md with session info:
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs state record-session \
-  --stopped-at "Phase ${PHASE} context gathered" \
-  --resume-file "${phase_dir}/${padded_phase}-CONTEXT.md"
-```
+Call the `gsd_state_record_session` tool with `{ "stopped_at": "Phase ${PHASE} context gathered", "resume_file": "${phase_dir}/${padded_phase}-CONTEXT.md" }`.
 
 Commit STATE.md:
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs(state): record phase ${PHASE} context session" --files .planning/STATE.md
-```
+Call the `gsd_commit_work` tool with `{ "message": "docs(state): record phase ${PHASE} context session", "files": ".planning/STATE.md" }`.
 </step>
 
 <step name="auto_advance">
 Check for auto-advance trigger:
 
-1. Parse `--auto` flag from $ARGUMENTS
-2. Read `workflow.auto_advance` from config:
-   ```bash
-   AUTO_CFG=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs config-get workflow.auto_advance 2>/dev/null || echo "false")
-   ```
+1. Check for `"auto": "true"` in the `<arguments>` JSON block above
+2. Call the `gsd_config_get` tool with `{ "key": "workflow.auto_advance" }`. Use the returned value as `AUTO_CFG`.
 
-**If `--auto` flag present AND `AUTO_CFG` is not true:** Persist auto-advance to config (handles direct `--auto` usage without new-project):
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs config-set workflow.auto_advance true
-```
+**If `"auto": "true"` is present in arguments AND `AUTO_CFG` is not true:** Persist auto-advance to config (handles direct `"auto"` usage without new-project):
 
-**If `--auto` flag present OR `AUTO_CFG` is true:**
+Call the `gsd_config_set` tool with `{ "key": "workflow.auto_advance", "value": "true" }`.
+
+**If `"auto": "true"` is present in arguments OR `AUTO_CFG` is true:**
 
 Display banner:
 ```
@@ -452,13 +444,14 @@ Display banner:
 Context captured. Spawning plan-phase...
 ```
 
-Spawn plan-phase as Task:
+Spawn plan-phase as delegate:
 ```
-Task(
-  prompt="Run /gsd:plan-phase ${PHASE} --auto",
-  subagent_type="general-purpose",
-  description="Plan Phase ${PHASE}"
-)
+<delegate>
+  <agent type="general-purpose">Plan Phase ${PHASE}</agent>
+  <prompt>
+    Call the gsd_plan_phase tool with { "phase": "${PHASE}", "auto": "true" }
+  </prompt>
+</delegate>
 ```
 
 **Handle plan-phase return:**
@@ -468,10 +461,10 @@ Task(
   Auto-advance stopped: Planning needs input.
 
   Review the output above and continue manually:
-  /gsd:plan-phase ${PHASE}
+  Call the `gsd_plan_phase` tool with `{ "phase": "${PHASE}" }`
   ```
 
-**If neither `--auto` nor config enabled:**
+**If neither `"auto"` argument nor config enabled:**
 Route to `confirm_creation` step (existing behavior — show manual next steps).
 </step>
 
@@ -488,3 +481,4 @@ Route to `confirm_creation` step (existing behavior — show manual next steps).
 - STATE.md updated with session info
 - User knows next steps
 </success_criteria>
+</output>

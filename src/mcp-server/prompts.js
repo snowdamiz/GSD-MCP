@@ -2,6 +2,17 @@ const path = require('path');
 const gsd = require('../../get-shit-done/lib/gsd-core.js');
 const { z } = require('zod');
 
+// ─── GSD root for include resolution ───
+const GSD_ROOT = path.resolve(__dirname, '../../get-shit-done');
+
+function resolveIncludes(content) {
+  return content.replace(/@~\/\.claude\/get-shit-done\/([\w\-\/]+\.md)/g, (match, relPath) => {
+    const fullPath = path.join(GSD_ROOT, relPath);
+    const included = gsd.safeReadFile(fullPath);
+    return included || match;
+  });
+}
+
 const PROMPTS = [
   // ─── Core Workflows ───
   {
@@ -248,6 +259,8 @@ async function getPrompt(name, args, cwd) {
   }
   
   if (!content) throw new Error(`Workflow file ${promptDef.file} not found`);
+
+  content = resolveIncludes(content);
 
   let prefix = '';
   if (args) {

@@ -51,18 +51,20 @@ Create: .planning/debug/{slug}.md
 
 ## Usage
 
-**From /gsd:debug:**
-```python
-Task(
-  prompt=filled_template,
-  subagent_type="gsd-debugger",
-  description="Debug {slug}"
-)
+**From the `gsd_debug` tool:**
+```xml
+<delegate>
+  <agent type="gsd-debugger">Debug {slug}</agent>
+  <prompt>{filled_template}</prompt>
+</delegate>
 ```
 
 **From diagnose-issues (UAT):**
-```python
-Task(prompt=template, subagent_type="gsd-debugger", description="Debug UAT-001")
+```xml
+<delegate>
+  <agent type="gsd-debugger">Debug UAT-001</agent>
+  <prompt>{template}</prompt>
+</delegate>
 ```
 
 ---

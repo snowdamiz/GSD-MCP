@@ -2,14 +2,12 @@
 
 Calculate the next decimal phase number for urgent insertions.
 
-## Using gsd-tools
+## Using the gsd_phase_next_decimal Tool
 
-```bash
-# Get next decimal phase after phase 6
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs phase next-decimal 6
-```
+Call the `gsd_phase_next_decimal` tool with the base phase number (e.g., `6`).
 
-Output:
+It returns JSON with:
+
 ```json
 {
   "found": true,
@@ -31,17 +29,9 @@ With existing decimals:
 
 ## Extract Values
 
-```bash
-DECIMAL_INFO=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs phase next-decimal "${AFTER_PHASE}")
-DECIMAL_PHASE=$(echo "$DECIMAL_INFO" | jq -r '.next')
-BASE_PHASE=$(echo "$DECIMAL_INFO" | jq -r '.base_phase')
-```
-
-Or with --raw flag:
-```bash
-DECIMAL_PHASE=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs phase next-decimal "${AFTER_PHASE}" --raw)
-# Returns just: 06.1
-```
+From the tool response, use:
+- `next` — the next available decimal phase number (e.g., `"06.1"`)
+- `base_phase` — the zero-padded base phase (e.g., `"06"`)
 
 ## Examples
 
@@ -54,12 +44,10 @@ DECIMAL_PHASE=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs phase next-decima
 
 ## Directory Naming
 
-Decimal phase directories use the full decimal number:
+Decimal phase directories use the full decimal number. Call the `gsd_generate_slug` tool with the description to get a URL-safe slug, then construct the directory path:
 
-```bash
-SLUG=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs generate-slug "$DESCRIPTION" --raw)
-PHASE_DIR=".planning/phases/${DECIMAL_PHASE}-${SLUG}"
-mkdir -p "$PHASE_DIR"
+```
+.planning/phases/${DECIMAL_PHASE}-${SLUG}/
 ```
 
 Example: `.planning/phases/06.1-fix-critical-auth-bug/`

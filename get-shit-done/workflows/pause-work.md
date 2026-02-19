@@ -42,7 +42,7 @@ phase: XX-name
 task: 3
 total_tasks: 7
 status: in_progress
-last_updated: [timestamp from current-timestamp]
+last_updated: [timestamp from gsd_current_timestamp tool]
 ---
 
 <current_state>
@@ -84,16 +84,11 @@ Start with: [specific first action when resuming]
 
 Be specific enough for a fresh Claude to understand immediately.
 
-Use `current-timestamp` for last_updated field. You can use init todos (which provides timestamps) or call directly:
-```bash
-timestamp=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs current-timestamp full --raw)
-```
+Use `gsd_current_timestamp` tool for last_updated field.
 </step>
 
 <step name="commit">
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "wip: [phase-name] paused at task [X]/[Y]" --files .planning/phases/*/.continue-here.md
-```
+Call the `gsd_commit_work` tool with `{ "message": "wip: [phase-name] paused at task [X]/[Y]", "files": ".planning/phases/*/.continue-here.md" }`.
 </step>
 
 <step name="confirm">
@@ -107,7 +102,7 @@ Current state:
 - Status: [in_progress/blocked]
 - Committed as WIP
 
-To resume: /gsd:resume-work
+To resume: use the `gsd_resume_work` tool
 
 ```
 </step>
@@ -120,3 +115,4 @@ To resume: /gsd:resume-work
 - [ ] Committed as WIP
 - [ ] User knows location and how to resume
 </success_criteria>
+</output>

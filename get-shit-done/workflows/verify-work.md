@@ -1,5 +1,5 @@
 <purpose>
-Validate built features through conversational testing with persistent state. Creates UAT.md that tracks test progress, survives /clear, and feeds gaps into /gsd:plan-phase --gaps.
+Validate built features through conversational testing with persistent state. Creates UAT.md that tracks test progress, survives context resets, and feeds gaps into the `gsd_plan_phase` tool with gaps mode.
 
 User tests, Claude records. One test at a time. Plain text responses.
 </purpose>
@@ -8,8 +8,8 @@ User tests, Claude records. One test at a time. Plain text responses.
 **Show expected, ask if reality matches.**
 
 Claude presents what SHOULD happen. User confirms or describes what's different.
-- "yes" / "y" / "next" / empty → pass
-- Anything else → logged as issue, severity inferred
+- "yes" / "y" / "next" / empty -> pass
+- Anything else -> logged as issue, severity inferred
 
 No Pass/Fail buttons. No severity questions. Just: "Here's what should happen. Does it?"
 </philosophy>
@@ -21,13 +21,9 @@ No Pass/Fail buttons. No severity questions. Just: "Here's what should happen. D
 <process>
 
 <step name="initialize" priority="first">
-If $ARGUMENTS contains a phase number, load context:
+If the <arguments> JSON block above contains a phase number, load context:
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init verify-work "${PHASE_ARG}")
-```
-
-Parse JSON for: `planner_model`, `checker_model`, `commit_docs`, `phase_found`, `phase_dir`, `phase_number`, `phase_name`, `has_verification`.
+Call the `gsd_init_verify_work` tool with `{ "phase": "{PHASE_ARG}" }`. Parse the returned JSON for: `planner_model`, `checker_model`, `commit_docs`, `phase_found`, `phase_dir`, `phase_number`, `phase_name`, `has_verification`.
 </step>
 
 <step name="check_active_session">
@@ -37,7 +33,7 @@ Parse JSON for: `planner_model`, `checker_model`, `commit_docs`, `phase_found`, 
 find .planning/phases -name "*-UAT.md" -type f 2>/dev/null | head -5
 ```
 
-**If active sessions exist AND no $ARGUMENTS provided:**
+**If active sessions exist AND no arguments provided:**
 
 Read each file's frontmatter (status, phase) and Current Test section.
 
@@ -56,23 +52,23 @@ Reply with a number to resume, or provide a phase number to start new.
 
 Wait for user response.
 
-- If user replies with number (1, 2) → Load that file, go to `resume_from_file`
-- If user replies with phase number → Treat as new session, go to `create_uat_file`
+- If user replies with number (1, 2) -> Load that file, go to `resume_from_file`
+- If user replies with phase number -> Treat as new session, go to `create_uat_file`
 
-**If active sessions exist AND $ARGUMENTS provided:**
+**If active sessions exist AND arguments provided:**
 
 Check if session exists for that phase. If yes, offer to resume or restart.
 If no, continue to `create_uat_file`.
 
-**If no active sessions AND no $ARGUMENTS:**
+**If no active sessions AND no arguments:**
 
 ```
 No active UAT sessions.
 
-Provide a phase number to start testing (e.g., /gsd:verify-work 4)
+Provide a phase number to start testing (e.g., use the `gsd_verify_work` tool with a phase number)
 ```
 
-**If no active sessions AND $ARGUMENTS provided:**
+**If no active sessions AND arguments provided:**
 
 Continue to `create_uat_file`.
 </step>
@@ -104,8 +100,8 @@ For each deliverable, create a test:
 
 Examples:
 - Accomplishment: "Added comment threading with infinite nesting"
-  → Test: "Reply to a Comment"
-  → Expected: "Clicking Reply opens inline composer below comment. Submitting shows reply nested under parent with visual indentation."
+  -> Test: "Reply to a Comment"
+  -> Expected: "Clicking Reply opens inline composer below comment. Submitting shows reply nested under parent with visual indentation."
 
 Skip internal/non-observable items (refactors, type changes, etc.).
 </step>
@@ -177,27 +173,25 @@ Read Current Test section from UAT file.
 Display using checkpoint box format:
 
 ```
-╔══════════════════════════════════════════════════════════════╗
-║  CHECKPOINT: Verification Required                           ║
-╚══════════════════════════════════════════════════════════════╝
+CHECKPOINT: Verification Required
 
 **Test {number}: {name}**
 
 {expected}
 
-──────────────────────────────────────────────────────────────
-→ Type "pass" or describe what's wrong
-──────────────────────────────────────────────────────────────
+----------------------------------------------------------
+> Type "pass" or describe what's wrong
+----------------------------------------------------------
 ```
 
-Wait for user response (plain text, no AskUserQuestion).
+Wait for user response (plain text).
 </step>
 
 <step name="process_response">
 **Process user response and update file:**
 
 **If response indicates pass:**
-- Empty response, "yes", "y", "ok", "pass", "next", "approved", "✓"
+- Empty response, "yes", "y", "ok", "pass", "next", "approved"
 
 Update Tests section:
 ```
@@ -221,10 +215,10 @@ reason: [user's reason if provided]
 - Treat as issue description
 
 Infer severity from description:
-- Contains: crash, error, exception, fails, broken, unusable → blocker
-- Contains: doesn't work, wrong, missing, can't → major
-- Contains: slow, weird, off, minor, small → minor
-- Contains: color, font, spacing, alignment, visual → cosmetic
+- Contains: crash, error, exception, fails, broken, unusable -> blocker
+- Contains: doesn't work, wrong, missing, can't -> major
+- Contains: slow, weird, off, minor, small -> minor
+- Contains: color, font, spacing, alignment, visual -> cosmetic
 - Default if unclear: major
 
 Update Tests section:
@@ -252,8 +246,8 @@ Append to Gaps section (structured YAML for plan-phase --gaps):
 Update Summary counts.
 Update frontmatter.updated timestamp.
 
-If more tests remain → Update Current Test, go to `present_test`
-If no more tests → Go to `complete_session`
+If more tests remain -> Update Current Test, go to `present_test`
+If no more tests -> Go to `complete_session`
 </step>
 
 <step name="resume_from_file">
@@ -291,9 +285,8 @@ Clear Current Test section:
 ```
 
 Commit the UAT file:
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "test({phase_num}): complete UAT - {passed} passed, {issues} issues" --files ".planning/phases/XX-name/{phase_num}-UAT.md"
-```
+
+Call the `gsd_commit_work` tool with `{ "message": "test({phase_num}): complete UAT - {passed} passed, {issues} issues", "files": ".planning/phases/XX-name/{phase_num}-UAT.md" }`.
 
 Present summary:
 ```
@@ -317,8 +310,8 @@ Present summary:
 ```
 All tests passed. Ready to continue.
 
-- `/gsd:plan-phase {next}` — Plan next phase
-- `/gsd:execute-phase {next}` — Execute next phase
+- Use the `gsd_plan_phase` tool -- Plan next phase
+- Use the `gsd_execute_phase` tool -- Execute next phase
 ```
 </step>
 
@@ -348,18 +341,16 @@ Diagnosis runs automatically - no user prompt. Parallel agents investigate simul
 
 Display:
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- GSD ► PLANNING FIXES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GSD > PLANNING FIXES
 
-◆ Spawning planner for gap closure...
+Spawning planner for gap closure...
 ```
 
 Spawn gsd-planner in --gaps mode:
 
-```
-Task(
-  prompt="""
+<delegate>
+  <agent type="gsd-planner" model="{planner_model}">Plan gap fixes for Phase {phase}</agent>
+  <prompt>
 <planning_context>
 
 **Phase:** {phase_number}
@@ -377,15 +368,11 @@ Task(
 </planning_context>
 
 <downstream_consumer>
-Output consumed by /gsd:execute-phase
+Output consumed by the `gsd_execute_phase` tool.
 Plans must be executable prompts.
 </downstream_consumer>
-""",
-  subagent_type="gsd-planner",
-  model="{planner_model}",
-  description="Plan gap fixes for Phase {phase}"
-)
-```
+  </prompt>
+</delegate>
 
 On return:
 - **PLANNING COMPLETE:** Proceed to `verify_gap_plans`
@@ -397,20 +384,18 @@ On return:
 
 Display:
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- GSD ► VERIFYING FIX PLANS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GSD > VERIFYING FIX PLANS
 
-◆ Spawning plan checker...
+Spawning plan checker...
 ```
 
 Initialize: `iteration_count = 1`
 
 Spawn gsd-plan-checker:
 
-```
-Task(
-  prompt="""
+<delegate>
+  <agent type="gsd-plan-checker" model="{checker_model}">Verify Phase {phase} fix plans</agent>
+  <prompt>
 <verification_context>
 
 **Phase:** {phase_number}
@@ -423,15 +408,11 @@ Task(
 
 <expected_output>
 Return one of:
-- ## VERIFICATION PASSED — all checks pass
-- ## ISSUES FOUND — structured issue list
+- ## VERIFICATION PASSED -- all checks pass
+- ## ISSUES FOUND -- structured issue list
 </expected_output>
-""",
-  subagent_type="gsd-plan-checker",
-  model="{checker_model}",
-  description="Verify Phase {phase} fix plans"
-)
-```
+  </prompt>
+</delegate>
 
 On return:
 - **VERIFICATION PASSED:** Proceed to `present_ready`
@@ -439,7 +420,7 @@ On return:
 </step>
 
 <step name="revision_loop">
-**Iterate planner ↔ checker until plans pass (max 3):**
+**Iterate planner <-> checker until plans pass (max 3):**
 
 **If iteration_count < 3:**
 
@@ -447,9 +428,9 @@ Display: `Sending back to planner for revision... (iteration {N}/3)`
 
 Spawn gsd-planner with revision context:
 
-```
-Task(
-  prompt="""
+<delegate>
+  <agent type="gsd-planner" model="{planner_model}">Revise Phase {phase} plans</agent>
+  <prompt>
 <revision_context>
 
 **Phase:** {phase_number}
@@ -467,14 +448,10 @@ Task(
 Read existing PLAN.md files. Make targeted updates to address checker issues.
 Do NOT replan from scratch unless issues are fundamental.
 </instructions>
-""",
-  subagent_type="gsd-planner",
-  model="{planner_model}",
-  description="Revise Phase {phase} plans"
-)
-```
+  </prompt>
+</delegate>
 
-After planner returns → spawn checker again (verify_gap_plans logic)
+After planner returns -> spawn checker again (verify_gap_plans logic)
 Increment iteration_count
 
 **If iteration_count >= 3:**
@@ -484,7 +461,7 @@ Display: `Max iterations reached. {N} issues remain.`
 Offer options:
 1. Force proceed (execute despite issues)
 2. Provide guidance (user gives direction, retry)
-3. Abandon (exit, user runs /gsd:plan-phase manually)
+3. Abandon (exit, user runs `gsd_plan_phase` tool manually)
 
 Wait for user response.
 </step>
@@ -493,11 +470,9 @@ Wait for user response.
 **Present completion and next steps:**
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- GSD ► FIXES READY ✓
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GSD > FIXES READY
 
-**Phase {X}: {Name}** — {N} gap(s) diagnosed, {M} fix plan(s) created
+**Phase {X}: {Name}** -- {N} gap(s) diagnosed, {M} fix plan(s) created
 
 | Gap | Root Cause | Fix Plan |
 |-----|------------|----------|
@@ -506,15 +481,15 @@ Wait for user response.
 
 Plans verified and ready for execution.
 
-───────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 
-## ▶ Next Up
+## Next Up
 
-**Execute fixes** — run fix plans
+**Execute fixes** -- run fix plans
 
-`/clear` then `/gsd:execute-phase {phase} --gaps-only`
+Start a fresh conversation then use the `gsd_execute_phase` tool with `{ "phase": "{phase}", "gaps_only": true }`
 
-───────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 ```
 </step>
 
@@ -524,9 +499,9 @@ Plans verified and ready for execution.
 **Batched writes for efficiency:**
 
 Keep results in memory. Write to file only when:
-1. **Issue found** — Preserve the problem immediately
-2. **Session complete** — Final write before commit
-3. **Checkpoint** — Every 5 passed tests (safety net)
+1. **Issue found** -- Preserve the problem immediately
+2. **Session complete** -- Final write before commit
+3. **Checkpoint** -- Every 5 passed tests (safety net)
 
 | Section | Rule | When Written |
 |---------|------|--------------|
@@ -566,5 +541,6 @@ Default to **major** if unclear. User can correct if needed.
 - [ ] If issues: gsd-planner creates fix plans (gap_closure mode)
 - [ ] If issues: gsd-plan-checker verifies fix plans
 - [ ] If issues: revision loop until plans pass (max 3 iterations)
-- [ ] Ready for `/gsd:execute-phase --gaps-only` when complete
+- [ ] Ready for `gsd_execute_phase` tool with gaps_only when complete
 </success_criteria>
+</output>

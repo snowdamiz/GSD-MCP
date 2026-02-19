@@ -25,11 +25,7 @@ Documents are reference material for Claude when planning/executing. Always incl
 <step name="init_context" priority="first">
 Load codebase mapping context:
 
-```bash
-INIT=$(node ~/.claude/get-shit-done/bin/gsd-tools.cjs init map-codebase)
-```
-
-Extract from init JSON: `mapper_model`, `commit_docs`, `codebase_dir`, `existing_maps`, `has_maps`, `codebase_dir_exists`.
+Call the `gsd_init_quick` tool with `{ "mode": "map-codebase" }`. Extract from the returned JSON: `mapper_model`, `commit_docs`, `codebase_dir`, `existing_maps`, `has_maps`, `codebase_dir_exists`.
 </step>
 
 <step name="check_existing">
@@ -84,22 +80,15 @@ Continue to spawn_agents.
 <step name="spawn_agents">
 Spawn 4 parallel gsd-codebase-mapper agents.
 
-Use Task tool with `subagent_type="gsd-codebase-mapper"`, `model="{mapper_model}"`, and `run_in_background=true` for parallel execution.
+Use delegate with `type="gsd-codebase-mapper"`, `model="{mapper_model}"`, and `run_in_background=true` for parallel execution.
 
 **CRITICAL:** Use the dedicated `gsd-codebase-mapper` agent, NOT `Explore`. The mapper agent writes documents directly.
 
 **Agent 1: Tech Focus**
 
-Task tool parameters:
-```
-subagent_type: "gsd-codebase-mapper"
-model: "{mapper_model}"
-run_in_background: true
-description: "Map codebase tech stack"
-```
-
-Prompt:
-```
+<delegate>
+  <agent type="gsd-codebase-mapper" model="{mapper_model}">Map codebase tech stack</agent>
+  <prompt>
 Focus: tech
 
 Analyze this codebase for technology stack and external integrations.
@@ -109,20 +98,14 @@ Write these documents to .planning/codebase/:
 - INTEGRATIONS.md - External APIs, databases, auth providers, webhooks
 
 Explore thoroughly. Write documents directly using templates. Return confirmation only.
-```
+  </prompt>
+</delegate>
 
 **Agent 2: Architecture Focus**
 
-Task tool parameters:
-```
-subagent_type: "gsd-codebase-mapper"
-model: "{mapper_model}"
-run_in_background: true
-description: "Map codebase architecture"
-```
-
-Prompt:
-```
+<delegate>
+  <agent type="gsd-codebase-mapper" model="{mapper_model}">Map codebase architecture</agent>
+  <prompt>
 Focus: arch
 
 Analyze this codebase architecture and directory structure.
@@ -132,20 +115,14 @@ Write these documents to .planning/codebase/:
 - STRUCTURE.md - Directory layout, key locations, naming conventions
 
 Explore thoroughly. Write documents directly using templates. Return confirmation only.
-```
+  </prompt>
+</delegate>
 
 **Agent 3: Quality Focus**
 
-Task tool parameters:
-```
-subagent_type: "gsd-codebase-mapper"
-model: "{mapper_model}"
-run_in_background: true
-description: "Map codebase conventions"
-```
-
-Prompt:
-```
+<delegate>
+  <agent type="gsd-codebase-mapper" model="{mapper_model}">Map codebase conventions</agent>
+  <prompt>
 Focus: quality
 
 Analyze this codebase for coding conventions and testing patterns.
@@ -155,20 +132,14 @@ Write these documents to .planning/codebase/:
 - TESTING.md - Framework, structure, mocking, coverage
 
 Explore thoroughly. Write documents directly using templates. Return confirmation only.
-```
+  </prompt>
+</delegate>
 
 **Agent 4: Concerns Focus**
 
-Task tool parameters:
-```
-subagent_type: "gsd-codebase-mapper"
-model: "{mapper_model}"
-run_in_background: true
-description: "Map codebase concerns"
-```
-
-Prompt:
-```
+<delegate>
+  <agent type="gsd-codebase-mapper" model="{mapper_model}">Map codebase concerns</agent>
+  <prompt>
 Focus: concerns
 
 Analyze this codebase for technical debt, known issues, and areas of concern.
@@ -177,7 +148,8 @@ Write this document to .planning/codebase/:
 - CONCERNS.md - Tech debt, bugs, security, performance, fragile areas
 
 Explore thoroughly. Write document directly using template. Return confirmation only.
-```
+  </prompt>
+</delegate>
 
 Continue to collect_confirmations.
 </step>
@@ -261,9 +233,7 @@ Continue to commit_codebase_map.
 <step name="commit_codebase_map">
 Commit the codebase map:
 
-```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.cjs commit "docs: map existing codebase" --files .planning/codebase/*.md
-```
+Call the `gsd_commit_work` tool with `{ "message": "docs: map existing codebase", "files": ".planning/codebase/*.md" }`.
 
 Continue to offer_next.
 </step>
@@ -297,14 +267,14 @@ Created .planning/codebase/:
 
 **Initialize project** — use codebase context for planning
 
-`/gsd:new-project`
+Use the `gsd_new_project` tool
 
-<sub>`/clear` first → fresh context window</sub>
+<sub>Start a fresh conversation for best results</sub>
 
 ---
 
 **Also available:**
-- Re-run mapping: `/gsd:map-codebase`
+- Re-run mapping: use the `gsd_map_codebase` tool
 - Review specific file: `cat .planning/codebase/STACK.md`
 - Edit any document before proceeding
 
@@ -325,3 +295,4 @@ End workflow.
 - Clear completion summary with line counts
 - User offered clear next steps in GSD style
 </success_criteria>
+</output>
