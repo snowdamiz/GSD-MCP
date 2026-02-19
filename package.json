@@ -1,37 +1,30 @@
 {
-  "name": "get-shit-done-cc",
-  "version": "1.20.4",
-  "description": "A meta-prompting, context engineering and spec-driven development system for Claude Code, OpenCode and Gemini by TÂCHES.",
-  "bin": {
-    "get-shit-done-cc": "bin/install.js"
-  },
+  "name": "gsd-mcp",
+  "version": "1.0.0",
+  "description": "GSD MCP Server — access Get Shit Done workflows from any MCP-compatible client.",
+  "main": "src/mcp-server/index.js",
   "files": [
-    "bin",
-    "commands",
-    "get-shit-done",
-    "agents",
-    "hooks/dist",
-    "scripts"
+    "src",
+    "get-shit-done"
   ],
   "keywords": [
-    "claude",
-    "claude-code",
+    "mcp",
+    "model-context-protocol",
     "ai",
     "meta-prompting",
     "context-engineering",
     "spec-driven-development",
-    "gemini",
-    "gemini-cli"
+    "get-shit-done"
   ],
   "author": "TÂCHES",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/glittercowboy/get-shit-done.git"
+    "url": "git+https://github.com/snowdamiz/GSD-MCP.git"
   },
-  "homepage": "https://github.com/glittercowboy/get-shit-done",
+  "homepage": "https://github.com/snowdamiz/GSD-MCP",
   "bugs": {
-    "url": "https://github.com/glittercowboy/get-shit-done/issues"
+    "url": "https://github.com/snowdamiz/GSD-MCP/issues"
   },
   "engines": {
     "node": ">=16.7.0"
@@ -40,13 +33,8 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "zod": "^4.3.6"
   },
-  "devDependencies": {
-    "esbuild": "^0.24.0"
-  },
   "scripts": {
-    "build:hooks": "node scripts/build-hooks.js",
-    "prepublishOnly": "npm run build:hooks",
-    "test": "node --test get-shit-done/bin/gsd-tools.test.js",
-    "start-mcp": "node src/mcp-server/index.js"
+    "start": "node src/mcp-server/index.js",
+    "test": "node --test get-shit-done/bin/gsd-tools.test.js"
   }
 }
