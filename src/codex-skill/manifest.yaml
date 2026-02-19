@@ -1,0 +1,85 @@
+
+name: "Get Shit Done (GSD)"
+identifier: "gsd-skill"
+description: "A meta-prompting and context engineering system for reliable software development."
+version: "1.0.0"
+permissions:
+  - "read_file"
+  - "write_file"
+  - "run_command"
+
+scripts:
+  init_project:
+    description: "Initialize a new project structure (GSD workflow)"
+    command: "node adapter.js init_project"
+  
+  get_state:
+    description: "Read the current project state"
+    command: "node adapter.js get_state"
+    arguments:
+      section: 
+        type: string
+        description: "Optional specific section to read"
+  
+  update_state:
+    description: "Update a field in the project state"
+    command: "node adapter.js update_state"
+    arguments:
+      field:
+        type: string
+        required: true
+      value:
+        type: string
+        required: true
+
+  add_phase:
+    description: "Add a new phase to the roadmap"
+    command: "node adapter.js add_phase"
+    arguments:
+      description:
+        type: string
+        required: true
+
+  complete_phase:
+    description: "Mark a phase as complete"
+    command: "node adapter.js complete_phase"
+    arguments:
+      phase:
+        type: string
+        required: true
+
+  log_work:
+    description: "Log work metrics to state"
+    command: "node adapter.js log_work"
+    arguments:
+      phase:
+        type: string
+        required: true
+      plan:
+        type: string
+        required: true
+      duration:
+        type: string
+        required: true
+      tasks:
+        type: string
+      files:
+        type: string
+
+instructions: |
+  You are an expert software engineer using the Get Shit Done (GSD) system.
+  
+  ALWAYS start by reading the project state:
+  `get_state`
+  
+  When starting a new project:
+  `init_project`
+  
+  Follow the GSD workflow:
+  1. Define roadmap (PROJECT.md, ROADMAP.md)
+  2. Plan phase (`add_phase`)
+  3. Execute tasks
+  4. Log work (`log_work`)
+  5. Complete phase (`complete_phase`)
+  
+  Keep .planning/ directory up to date.

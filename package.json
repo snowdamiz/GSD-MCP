@@ -36,13 +36,17 @@
   "engines": {
     "node": ">=16.7.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^4.3.6"
+  },
   "devDependencies": {
     "esbuild": "^0.24.0"
   },
   "scripts": {
     "build:hooks": "node scripts/build-hooks.js",
     "prepublishOnly": "npm run build:hooks",
-    "test": "node --test get-shit-done/bin/gsd-tools.test.js"
+    "test": "node --test get-shit-done/bin/gsd-tools.test.js",
+    "start-mcp": "node src/mcp-server/index.js"
   }
 }
